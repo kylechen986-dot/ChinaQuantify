@@ -1,6 +1,6 @@
 <template>
   <div class="stock-workspace">
-    <section class="stock-list-panel">
+    <section ref="stockListPanel" class="stock-list-panel">
       <div class="stock-list-header">
         <div>
           <h2>关注股票</h2>
@@ -48,7 +48,7 @@
           </div>
 
           <div ref="stockTableWrap" class="stock-scroll-list" @wheel.passive="handleWheel">
-            <el-table class="stock-table" :data="stocks" :height="568" highlight-current-row @row-click="selectStock">
+            <el-table class="stock-table" :data="stocks" :height="tableHeight" highlight-current-row @row-click="selectStock">
               <el-table-column prop="symbol" label="代码" width="96" />
               <el-table-column prop="name" label="名称" min-width="130" />
               <el-table-column prop="industry" label="行业" width="110" />
@@ -77,7 +77,7 @@
       </el-tabs>
     </section>
 
-    <aside class="stock-detail-panel" v-if="selected">
+    <aside ref="stockDetailPanel" class="stock-detail-panel" v-if="selected">
       <div class="stock-detail-head">
         <div>
           <div class="eyebrow">个股技术研判</div>
@@ -161,7 +161,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { api } from '../api/modules'
 import type { StockIndustry, StockPage, WatchStock } from '../types/api'
@@ -178,8 +178,12 @@ const page = ref(1)
 const loading = ref(false)
 const scrollIntent = ref(0)
 const consumedScrollIntent = ref(0)
+const stockListPanel = ref<HTMLElement>()
 const stockTableWrap = ref<HTMLElement>()
+const stockDetailPanel = ref<HTMLElement>()
+const tableHeight = ref(568)
 let tableScrollEl: HTMLElement | null = null
+let layoutObserver: ResizeObserver | undefined
 
 const watchedSymbols = computed(() => new Set(watchedStocks.value.map((item) => item.symbol)))
 
@@ -360,6 +364,20 @@ function bindTableScroll() {
   tableScrollEl?.addEventListener('scroll', handleTableScroll, { passive: true })
 }
 
+function updateTableHeight() {
+  const wrapper = stockTableWrap.value
+  const listPanel = stockListPanel.value
+  const detailPanel = stockDetailPanel.value
+  if (!wrapper || !listPanel || !detailPanel) return
+  const loadStateHeight = wrapper.querySelector<HTMLElement>('.stock-load-state')?.offsetHeight ?? 45
+  const wrapperOffset = wrapper.getBoundingClientRect().top - listPanel.getBoundingClientRect().top
+  const bottomPadding = 18
+  const nextHeight = Math.max(420, Math.round(detailPanel.offsetHeight - wrapperOffset - loadStateHeight - bottomPadding))
+  if (nextHeight > 0) {
+    tableHeight.value = nextHeight
+  }
+}
+
 function handleTableScroll(event: Event) {
   void tryLoadNextPage(event.currentTarget as HTMLElement)
 }
@@ -373,6 +391,7 @@ async function resetTableScroll() {
   if (scrollEl) {
     scrollEl.scrollTop = 0
   }
+  updateTableHeight()
 }
 
 async function loadWatched() {
@@ -451,16 +470,34 @@ async function handleTabChange() {
   }
   await nextTick()
   bindTableScroll()
+  updateTableHeight()
 }
 
 onMounted(async () => {
   const [industryData] = await Promise.all([api.industries(), loadWatched()])
   industries.value = industryData
   await nextTick()
+  layoutObserver = new ResizeObserver(() => {
+    updateTableHeight()
+    bindTableScroll()
+  })
+  if (stockTableWrap.value) {
+    layoutObserver.observe(stockTableWrap.value)
+  }
+  if (stockDetailPanel.value) {
+    layoutObserver.observe(stockDetailPanel.value)
+  }
+  updateTableHeight()
   bindTableScroll()
 })
 
 onBeforeUnmount(() => {
+  layoutObserver?.disconnect()
   tableScrollEl?.removeEventListener('scroll', handleTableScroll)
+})
+
+watch(selected, async () => {
+  await nextTick()
+  updateTableHeight()
 })
 </script>
