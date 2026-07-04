@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from app.services.backtest_service import get_backtest_summary
 from app.core.config import settings
-from app.services.llm_service import generate_deepseek_report, generate_doubao_report
+from app.services.llm_service import generate_deepseek_report, generate_doubao_report, generate_openai_report
 from app.services.market_service import get_market_overview
 from app.services.strategy_service import get_strategy_signals
 
@@ -44,10 +44,11 @@ def get_latest_report() -> dict:
     llm_error = ""
 
     providers = {
+        "openai": generate_openai_report,
         "deepseek": generate_deepseek_report,
         "doubao": generate_doubao_report,
     }
-    provider_order = [settings.ai_provider, "deepseek", "doubao"]
+    provider_order = [settings.ai_provider, "openai", "deepseek", "doubao"]
 
     try:
         prompt = build_report_prompt()

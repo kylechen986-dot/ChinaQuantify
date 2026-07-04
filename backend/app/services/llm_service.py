@@ -24,6 +24,33 @@ def _post_chat_completion(base_url: str, api_key: str, payload: dict) -> dict:
         return response.json()
 
 
+def is_openai_configured() -> bool:
+    return bool(settings.openai_api_key and settings.openai_model)
+
+
+def generate_openai_report(prompt: str) -> dict:
+    if not is_openai_configured():
+        raise RuntimeError("OpenAI API is not configured")
+
+    payload = {
+        "model": settings.openai_model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.3,
+        "max_tokens": 1200,
+    }
+    data = _post_chat_completion(settings.openai_base_url, settings.openai_api_key, payload)
+    content = data["choices"][0]["message"]["content"]
+    return {
+        "content": content.strip(),
+        "model_provider": "OPENAI",
+        "model_name": settings.openai_model,
+        "usage": data.get("usage", {}),
+    }
+
+
 def is_deepseek_configured() -> bool:
     return bool(settings.deepseek_api_key and settings.deepseek_model)
 
