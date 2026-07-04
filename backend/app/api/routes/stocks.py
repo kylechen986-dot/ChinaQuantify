@@ -2,7 +2,14 @@ from fastapi import APIRouter
 from fastapi import HTTPException
 
 from app.schemas.common import ApiResponse
-from app.services.watchlist_service import add_watch_stock, get_stock, list_industries, list_stocks, list_watch_stocks
+from app.services.watchlist_service import (
+    add_watch_stock,
+    get_stock,
+    list_industries,
+    list_recommended_stocks,
+    list_stocks,
+    list_watch_stocks,
+)
 
 router = APIRouter()
 
@@ -15,6 +22,11 @@ def stocks(page: int = 1, page_size: int = 50, keyword: str = "", industry: str 
 @router.get("/industries", response_model=ApiResponse)
 def industries() -> ApiResponse:
     return ApiResponse(data=list_industries())
+
+
+@router.get("/recommendations", response_model=ApiResponse)
+def recommendations(limit: int = 6) -> ApiResponse:
+    return ApiResponse(data=list_recommended_stocks(limit=limit))
 
 
 @router.get("/watchlist", response_model=ApiResponse)

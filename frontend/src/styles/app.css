@@ -954,6 +954,10 @@ body {
   gap: 16px;
 }
 
+.backtest-workspace .chart {
+  height: 360px;
+}
+
 .backtest-hero {
   display: flex;
   align-items: flex-start;
@@ -979,11 +983,117 @@ body {
   line-height: 1.8;
 }
 
-.backtest-grid {
+.backtest-answer-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.backtest-answer-panel article,
+.backtest-recommend-panel {
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.backtest-answer-panel span {
+  color: #1f7aec;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-answer-panel strong {
+  display: block;
+  margin-top: 6px;
+  color: #101828;
+  font-size: 18px;
+}
+
+.backtest-answer-panel p {
+  margin: 8px 0 0;
+  color: #667085;
+  line-height: 1.7;
+}
+
+.backtest-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(380px, 0.65fr);
   gap: 16px;
   align-items: start;
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recommend-card {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.recommend-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recommend-card-head strong {
+  display: block;
+  color: #101828;
+  font-size: 18px;
+}
+
+.recommend-card-head span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.recommend-data-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recommend-data-row span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eef2f6;
+  color: #475467;
+  font-size: 12px;
+}
+
+.recommend-card p {
+  margin: 0;
+  color: #475467;
+  line-height: 1.7;
+}
+
+.recommend-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.recommend-card li {
+  color: #667085;
+  line-height: 1.7;
+}
+
+.recommend-card > .el-button,
+.recommend-card > .el-tag {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .backtest-panel {
@@ -992,10 +1102,6 @@ body {
   border: 1px solid #dbe4ef;
   border-radius: 8px;
   background: #ffffff;
-}
-
-.backtest-chart-panel {
-  grid-row: span 2;
 }
 
 .backtest-panel-head {
@@ -1018,29 +1124,17 @@ body {
   line-height: 1.6;
 }
 
-.backtest-explain-list,
 .backtest-score-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.backtest-explain-list article,
 .backtest-score-item {
   padding: 14px;
   border: 1px solid #eef2f6;
   border-radius: 8px;
   background: #fbfcfe;
-}
-
-.backtest-explain-list strong {
-  color: #101828;
-}
-
-.backtest-explain-list p {
-  margin: 6px 0 0;
-  color: #667085;
-  line-height: 1.7;
 }
 
 .backtest-score-item {
@@ -1068,12 +1162,427 @@ body {
   font-size: 17px;
 }
 
-.backtest-next-list {
+.backtest-guide-panel,
+.backtest-next-panel {
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.backtest-guide-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.backtest-guide-panel article,
+.backtest-next-grid article {
+  padding: 14px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.backtest-guide-panel span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 10px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef6ff;
+  color: #1f7aec;
+  font-weight: 800;
+}
+
+.backtest-guide-panel strong,
+.backtest-next-grid strong {
+  color: #101828;
+}
+
+.backtest-guide-panel p,
+.backtest-next-grid p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.7;
+}
+
+.backtest-next-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.backtest-next-panel .backtest-panel-head {
+  margin-bottom: 12px;
+}
+
+.monitor-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.monitor-workspace .chart {
+  height: 340px;
+}
+
+.monitor-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #b9d7ff;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.monitor-hero h2 {
+  margin: 8px 0 10px;
+  color: #101828;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+.monitor-hero p {
+  max-width: 980px;
   margin: 0;
+  color: #475467;
+  line-height: 1.8;
+}
+
+.monitor-hero-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitor-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.monitor-status-card {
+  display: flex;
+  min-height: 120px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.monitor-status-card span,
+.monitor-status-card small {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.monitor-status-card span {
+  font-size: 13px;
+}
+
+.monitor-status-card small {
+  font-size: 12px;
+}
+
+.monitor-status-card strong {
+  color: #101828;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.monitor-panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.monitor-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(380px, 0.75fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.monitor-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.monitor-panel-head h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 17px;
+}
+
+.monitor-panel-head p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.recommend-card.is-trial_buy {
+  border-color: #fecdca;
+  background: #fff8f7;
+}
+
+.recommend-card.is-wait {
+  border-color: #fedf89;
+  background: #fffbeb;
+}
+
+.recommend-card.is-avoid {
+  border-color: #d0d5dd;
+  background: #f8fafc;
+}
+
+.recommend-card.is-watch {
+  border-color: #b9d7ff;
+  background: #f7fbff;
+}
+
+.action-one-liner {
+  color: #101828 !important;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.action-rule-box {
+  padding: 10px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.action-rule-box span,
+.action-rule-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-rule-box strong,
+.action-rule-grid strong {
+  color: #101828;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.action-detail-collapse {
+  --el-collapse-border-color: transparent;
+  --el-collapse-header-bg-color: transparent;
+  --el-collapse-content-bg-color: transparent;
+}
+
+.snapshot-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.snapshot-summary-grid article {
+  display: flex;
+  min-height: 96px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.snapshot-summary-grid span,
+.snapshot-summary-grid small {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.snapshot-summary-grid strong {
+  color: #101828;
+  font-size: 26px;
+}
+
+.monitor-stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.monitor-stock-card {
+  padding: 14px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.monitor-stock-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.monitor-stock-head strong {
+  display: block;
+  color: #101828;
+  font-size: 18px;
+}
+
+.monitor-stock-head span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.monitor-stock-data {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.monitor-stock-data span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eef2f6;
+  color: #475467;
+  font-size: 12px;
+}
+
+.monitor-stock-card p {
+  margin: 8px 0 0;
+  color: #344054;
+  font-weight: 700;
+  line-height: 1.75;
+}
+
+.action-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.action-rule-grid div {
+  padding: 10px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.technical-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.technical-strip article {
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.technical-strip article div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.technical-strip span,
+.technical-strip small {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.technical-strip strong {
+  color: #101828;
+}
+
+.monitor-risk-list {
+  margin: 10px 0 0;
   padding-left: 18px;
 }
 
-.backtest-next-list li {
+.monitor-risk-list li {
+  color: #667085;
+  line-height: 1.7;
+}
+
+.weekly-conclusion {
+  padding: 14px;
+  border: 1px solid #b9d7ff;
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.weekly-conclusion strong {
+  color: #101828;
+  line-height: 1.7;
+}
+
+.weekly-conclusion p {
+  margin: 8px 0 0;
   color: #475467;
-  line-height: 1.9;
+  line-height: 1.7;
+}
+
+.weekly-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.weekly-review-list article {
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.weekly-review-list article div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.weekly-review-list strong {
+  color: #101828;
+}
+
+.weekly-review-list p {
+  margin: 8px 0;
+  color: #475467;
+  line-height: 1.7;
+}
+
+.weekly-review-list small {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.weekly-guide {
+  margin-top: 12px;
 }

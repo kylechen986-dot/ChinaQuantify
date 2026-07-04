@@ -106,9 +106,22 @@ export interface WatchStock {
   market_tone: string
   market_context: string
   plain_analysis: string
+  action_plan: {
+    action: string
+    action_level: 'trial_buy' | 'wait' | 'avoid' | 'watch'
+    one_liner: string
+    position: string
+    horizon: string
+    buy_timing: string
+    sell_rule: string
+  }
   test_plan: string[]
   risk_points: string[]
   data_source: string
+  recommendation_score?: number
+  recommendation_reason?: string[]
+  action_label?: string
+  action_hint?: string
 }
 
 export interface StockPage {
@@ -127,4 +140,89 @@ export interface StockPage {
 export interface StockIndustry {
   name: string
   code: string
+}
+
+export interface MonitorTechnicalCheck {
+  label: string
+  value: string
+  plain: string
+  score: number
+}
+
+export interface MonitorStock extends WatchStock {
+  monitor_action: string
+  monitor_tone: 'positive' | 'neutral' | 'risk'
+  monitor_explanation: string
+  technical_checks: MonitorTechnicalCheck[]
+}
+
+export interface MonitorSnapshot {
+  id: string
+  collected_at: string
+  trade_date: string
+  trigger: string
+  market_open: boolean
+  collect_rule: string
+  data_source: string
+  sync_timezone: string
+  market_overview: MarketOverview
+  watched_count: number
+  watched_stocks: MonitorStock[]
+  summary: {
+    headline: string
+    positive_count: number
+    neutral_count: number
+    risk_count: number
+    market_brief: string
+  }
+}
+
+export interface WeeklyReview {
+  id: string
+  generated_at: string
+  period_start: string
+  period_end: string
+  trigger: string
+  snapshot_count: number
+  title: string
+  conclusion: string
+  market_summary: string
+  watch_reviews: Array<{
+    symbol: string
+    name: string
+    action: string
+    action_plan: WatchStock['action_plan']
+    plain_summary: string
+    change_pct: number
+    signal_score: number
+    technical_checks: MonitorTechnicalCheck[]
+    risk_points: string[]
+  }>
+  indicator_guide: string[]
+  next_actions: string[]
+}
+
+export interface MonitorDashboard {
+  scheduler: {
+    enabled: boolean
+    timezone: string
+    market_status: string
+    collect_interval_minutes: number
+    collect_window: string
+    weekly_review_rule: string
+    next_collect_at: string
+    next_weekly_review_at: string
+  }
+  latest_snapshot: MonitorSnapshot | null
+  latest_weekly_review: WeeklyReview | null
+  recent_snapshots: Array<{
+    id: string
+    collected_at: string
+    trade_date: string
+    watched_count: number
+    headline: string
+    market_open: boolean
+    trigger: string
+  }>
+  recommendations: WatchStock[]
 }

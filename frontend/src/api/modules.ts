@@ -1,5 +1,17 @@
 import { getData, postData } from './http'
-import type { AiReport, BacktestSummary, IndicatorSnapshot, MarketOverview, StockIndustry, StockPage, StrategySignal, WatchStock } from '../types/api'
+import type {
+  AiReport,
+  BacktestSummary,
+  IndicatorSnapshot,
+  MarketOverview,
+  MonitorDashboard,
+  MonitorSnapshot,
+  StockIndustry,
+  StockPage,
+  StrategySignal,
+  WatchStock,
+  WeeklyReview,
+} from '../types/api'
 
 export const api = {
   health: () => getData<Record<string, string>>('/system/health'),
@@ -15,4 +27,8 @@ export const api = {
   stockDetail: (symbol: string) => getData<WatchStock>(`/stocks/${symbol}`),
   addWatchStock: (symbol: string) => postData<WatchStock>(`/stocks/watchlist/${symbol}`),
   watchStocks: () => getData<WatchStock[]>('/stocks/watchlist'),
+  stockRecommendations: (limit = 6) => getData<WatchStock[]>('/stocks/recommendations', { limit }),
+  monitorDashboard: () => getData<MonitorDashboard>('/monitor/dashboard'),
+  collectMonitorSnapshot: () => postData<MonitorSnapshot>('/monitor/collect'),
+  buildWeeklyReview: () => postData<WeeklyReview>('/monitor/weekly-review'),
 }

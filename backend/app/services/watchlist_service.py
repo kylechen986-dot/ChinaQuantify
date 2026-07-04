@@ -23,6 +23,7 @@ MAX_SINA_PAGE_SIZE = 100
 
 _node_cache: dict[str, dict[str, Any]] = {}
 _industry_cache: dict[str, Any] = {"fetched_at": 0.0, "items": []}
+_recommendation_cache: dict[str, Any] = {"fetched_at": 0.0, "items": []}
 
 
 STOCK_PROFILE = {
@@ -135,13 +136,13 @@ def _stock_count(node: str) -> int:
     return _to_int(_sina_get("Market_Center.getHQNodeStockCount", {"node": node}), 0)
 
 
-def _fetch_node_page(node: str, page: int, page_size: int) -> list[dict]:
+def _fetch_node_page(node: str, page: int, page_size: int, sort: str = "symbol", asc: int = 1) -> list[dict]:
     page_size = max(1, min(page_size, MAX_SINA_PAGE_SIZE))
     params = {
         "page": max(page, 1),
         "num": page_size,
-        "sort": "symbol",
-        "asc": 1,
+        "sort": sort,
+        "asc": asc,
         "node": node,
         "symbol": "",
         "_s_r_a": "page",
@@ -261,6 +262,57 @@ def _risk_points(stock: dict) -> list[str]:
     return points
 
 
+def _action_plan(stock: dict) -> dict:
+    change_pct = float(stock.get("change_pct") or 0)
+    signal_score = int(stock.get("signal_score") or 0)
+    close = float(stock.get("close") or 0)
+    ma20 = float(stock.get("ma20") or 0)
+    rsi14 = float(stock.get("rsi14") or 0)
+
+    if signal_score >= 78 and close >= ma20 and 45 <= rsi14 <= 70 and 1.2 <= change_pct <= 4.8:
+        action = "小仓试探"
+        action_level = "trial_buy"
+        one_liner = "可以放入今日重点观察，满足回踩不破或放量确认时再小仓试探。"
+        position = "单只不超过计划资金 5%-8%"
+        horizon = "短线 3-7 个交易日"
+        buy_timing = "不追开盘急涨，优先等回踩 MA20 附近不破，或盘中放量突破前高。"
+        sell_rule = "跌破 MA20 或亏损 5% 先退出；上涨 8%-12% 后分批落袋。"
+    elif signal_score >= 70 and close >= ma20:
+        action = "等待回踩"
+        action_level = "wait"
+        one_liner = "趋势还可以，但不适合追高，先等价格回落后确认承接。"
+        position = "暂不买；若确认后单只不超过 5%"
+        horizon = "短线观察 3-5 个交易日"
+        buy_timing = "等回踩不破 MA20，或连续两次采集评分保持 70 以上。"
+        sell_rule = "评分跌破 60、跌破 MA20 或大盘明显转弱时取消关注。"
+    elif close < ma20 or signal_score < 55:
+        action = "暂不买"
+        action_level = "avoid"
+        one_liner = "当前信号偏弱，不适合新手介入，先看风险是否释放。"
+        position = "0 仓位"
+        horizon = "等待下一轮复盘"
+        buy_timing = "重新站上 MA20 且评分回到 65 以上再考虑。"
+        sell_rule = "如果已经持有，优先减仓或退出观察。"
+    else:
+        action = "只观察"
+        action_level = "watch"
+        one_liner = "方向不够明确，先加入关注池，不急着买。"
+        position = "0 仓位"
+        horizon = "观察 1 周"
+        buy_timing = "等待趋势、评分和大盘环境同时转好。"
+        sell_rule = "连续走弱或评分下降时移出关注池。"
+
+    return {
+        "action": action,
+        "action_level": action_level,
+        "one_liner": one_liner,
+        "position": position,
+        "horizon": horizon,
+        "buy_timing": buy_timing,
+        "sell_rule": sell_rule,
+    }
+
+
 def _enrich_stock(raw: dict, overview: dict, synced_at: str, watched_symbols: set[str], industry_name: str = "") -> dict:
     code = str(raw.get("code") or raw.get("symbol", ""))[-6:]
     profile = STOCK_PROFILE.get(code, {})
@@ -314,6 +366,7 @@ def _enrich_stock(raw: dict, overview: dict, synced_at: str, watched_symbols: se
         "data_source": "SINA_REALTIME",
     }
     stock["plain_analysis"] = _plain_analysis(stock, market_tone)
+    stock["action_plan"] = _action_plan(stock)
     stock["test_plan"] = [
         f"对比 {stock['name']} 与 {stock['related_etf']} 的相对强弱，确认个股是否跑赢所属风格。",
         "观察价格是否站稳短期趋势线，避免只看单日涨跌。",
@@ -375,6 +428,83 @@ def list_watch_stocks() -> list[dict]:
     synced_at = get_sync_time()
     selected = _fetch_realtime_quotes(sorted(watched_symbols))
     return [_enrich_stock(item, overview, synced_at, watched_symbols) for item in selected]
+
+
+def _recommendation_reason(stock: dict) -> list[str]:
+    reasons = [
+        f"策略评分 {stock['signal_score']}，短线强度高于普通观察阈值。",
+        f"今日涨跌幅 {stock['change_pct']}%，属于有动能但不过热的候选区间。",
+        f"{stock['market_context']} {stock['relative_strength']}。",
+    ]
+    if stock["close"] >= stock["ma20"]:
+        reasons.append("价格位于短期趋势线上方，适合作为观察候选。")
+    return reasons
+
+
+def _recommendation_label(stock: dict) -> tuple[str, str]:
+    if stock["recommendation_score"] >= 82:
+        return "建议加入关注", "先放入关注队列，观察后续能否继续强于关联 ETF。"
+    if stock["recommendation_score"] >= 72:
+        return "观察候选", "趋势和动能较好，但仍需要等待回踩或连续性确认。"
+    return "谨慎观察", "有一定动能，但确认度不足，只适合低优先级跟踪。"
+
+
+def list_recommended_stocks(limit: int = 6) -> list[dict]:
+    now = time.time()
+    if _recommendation_cache["items"] and now - _recommendation_cache["fetched_at"] <= 90:
+        return _recommendation_cache["items"][: max(1, min(limit, 12))]
+
+    overview = get_market_overview()
+    synced_at = get_sync_time()
+    watched_symbols = _load_watched_symbols()
+    raw_items: list[dict] = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(_fetch_node_page, "hs_a", page, MAX_SINA_PAGE_SIZE, "changepercent", 0): page
+            for page in range(1, 36)
+        }
+        chunks: list[tuple[int, list[dict]]] = []
+        for future in as_completed(futures):
+            chunks.append((futures[future], future.result()))
+        for _, chunk in sorted(chunks, key=lambda item: item[0]):
+            raw_items.extend(chunk)
+
+    candidates = []
+    seen = set()
+    for item in raw_items:
+        code = str(item.get("code", ""))[-6:]
+        name = str(item.get("name", ""))
+        change_pct = _to_float(item.get("changepercent"))
+        turnover = _to_float(item.get("turnoverratio"))
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        if "ST" in name.upper() or "退" in name:
+            continue
+        if not (1.2 <= change_pct <= 6.8):
+            continue
+        stock = _enrich_stock(item, overview, synced_at, watched_symbols)
+        if stock["signal_score"] < 62:
+            continue
+        action_level = stock["action_plan"]["action_level"]
+        activity_bonus = 8 if 1 <= turnover <= 8 else 3 if turnover > 0 else 0
+        action_bonus = 24 if action_level == "trial_buy" else 8 if action_level == "wait" else -20
+        momentum_fit = max(0, 18 - abs(change_pct - 3.5) * 4)
+        base_score = min(stock["signal_score"], 76 if change_pct > 4.8 else 86)
+        heat_penalty = 12 if change_pct > 4.8 else 0
+        rsi_penalty = 10 if stock["rsi14"] > 70 else 0
+        stock["recommendation_score"] = max(
+            0,
+            min(100, round(base_score + momentum_fit + activity_bonus + action_bonus - heat_penalty - rsi_penalty)),
+        )
+        stock["recommendation_reason"] = _recommendation_reason(stock)
+        stock["action_label"], stock["action_hint"] = _recommendation_label(stock)
+        candidates.append(stock)
+
+    candidates.sort(key=lambda item: item["recommendation_score"], reverse=True)
+    _recommendation_cache["items"] = candidates[:12]
+    _recommendation_cache["fetched_at"] = now
+    return _recommendation_cache["items"][: max(1, min(limit, 12))]
 
 
 def get_stock(symbol: str) -> dict | None:

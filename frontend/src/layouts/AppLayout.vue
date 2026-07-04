@@ -28,7 +28,7 @@
         </el-menu-item>
         <el-menu-item index="/backtest">
           <el-icon><Histogram /></el-icon>
-          <span>回测结果</span>
+          <span>操作看板</span>
         </el-menu-item>
         <el-menu-item index="/report">
           <el-icon><Document /></el-icon>
