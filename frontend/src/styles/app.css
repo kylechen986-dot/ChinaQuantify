@@ -427,6 +427,7 @@ body {
 
 .stock-list-panel {
   min-width: 0;
+  overflow: hidden;
 }
 
 .stock-list-header {
@@ -458,6 +459,72 @@ body {
   flex-direction: column;
   gap: 16px;
   padding: 18px;
+}
+
+.stock-tabs {
+  padding: 0 18px 18px;
+}
+
+.watch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.watch-card {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid #e4eaf2;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.watch-card:hover,
+.watch-card.active {
+  border-color: #1f7aec;
+  background: #eef6ff;
+}
+
+.watch-card span {
+  color: #101828;
+  font-weight: 800;
+}
+
+.watch-card strong {
+  font-size: 22px;
+}
+
+.watch-card small {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.stock-filter-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 220px 96px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stock-scroll-list {
+  height: 620px;
+  overflow: auto;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+}
+
+.stock-load-state {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  color: #667085;
+  font-size: 13px;
 }
 
 .stock-detail-head {

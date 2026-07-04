@@ -75,6 +75,7 @@ export interface AiReport {
 
 export interface WatchStock {
   symbol: string
+  sina_symbol: string
   name: string
   market: string
   industry: string
@@ -85,6 +86,15 @@ export interface WatchStock {
   sync_timezone: string
   close: number
   change_pct: number
+  price_change: number
+  open: number
+  high: number
+  low: number
+  volume: number
+  amount: number
+  turnover_ratio: number
+  pe: number
+  pb: number
   ma20: number
   ma60: number
   rsi14: number
@@ -98,4 +108,23 @@ export interface WatchStock {
   plain_analysis: string
   test_plan: string[]
   risk_points: string[]
+  data_source: string
+}
+
+export interface StockPage {
+  items: WatchStock[]
+  page: number
+  page_size: number
+  total: number
+  has_more: boolean
+  keyword: string
+  industry: string
+  industry_name: string
+  data_source: string
+  synced_at: string
+}
+
+export interface StockIndustry {
+  name: string
+  code: string
 }

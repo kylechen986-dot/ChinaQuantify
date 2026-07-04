@@ -1,5 +1,5 @@
 import { getData, postData } from './http'
-import type { AiReport, BacktestSummary, IndicatorSnapshot, MarketOverview, StrategySignal, WatchStock } from '../types/api'
+import type { AiReport, BacktestSummary, IndicatorSnapshot, MarketOverview, StockIndustry, StockPage, StrategySignal, WatchStock } from '../types/api'
 
 export const api = {
   health: () => getData<Record<string, string>>('/system/health'),
@@ -10,7 +10,8 @@ export const api = {
   reports: () => getData<AiReport[]>('/reports'),
   reportDetail: (id: number) => getData<AiReport>(`/reports/${id}`),
   latestReport: () => getData<AiReport>('/reports/latest'),
-  stocks: () => getData<WatchStock[]>('/stocks'),
+  stocks: (params?: { page?: number; page_size?: number; keyword?: string; industry?: string }) => getData<StockPage>('/stocks', params),
+  industries: () => getData<StockIndustry[]>('/stocks/industries'),
   stockDetail: (symbol: string) => getData<WatchStock>(`/stocks/${symbol}`),
   addWatchStock: (symbol: string) => postData<WatchStock>(`/stocks/watchlist/${symbol}`),
   watchStocks: () => getData<WatchStock[]>('/stocks/watchlist'),

@@ -7,8 +7,8 @@ export const http = axios.create({
   timeout: 60000,
 })
 
-export async function getData<T>(url: string): Promise<T> {
-  const response = await http.get<ApiResponse<T>>(url)
+export async function getData<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const response = await http.get<ApiResponse<T>>(url, { params })
   return response.data.data
 }
 
