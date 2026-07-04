@@ -50,7 +50,7 @@ DOUBAO_ENDPOINT_ID=方舟接入点 ID，可选
 DOUBAO_MODEL=doubao-1-5-lite-32k-250115
 ```
 
-如果需要切换到 OpenAI，将 `AI_PROVIDER` 改为 `openai`。如果 `DOUBAO_ENDPOINT_ID` 有值，后端会优先把它作为 Chat API 的 `model` 参数；否则使用 `DOUBAO_MODEL`。当当前 AI 供应商未配置或调用失败时，日报接口会按 OpenAI、DeepSeek、豆包顺序尝试，最后自动回退到 Mock 内容，保证 MVP 页面可用。
+如果需要切换到 OpenAI，将 `AI_PROVIDER` 改为 `openai`。如果 `DOUBAO_ENDPOINT_ID` 有值，后端会优先把它作为 Chat API 的 `model` 参数；否则使用 `DOUBAO_MODEL`。当当前 AI 供应商未配置或调用失败时，日报接口会优先尝试国内模型，按 DeepSeek、豆包、OpenAI 顺序兜底，最后自动回退到 Mock 内容，保证 MVP 页面可用。
 
 ## 当前 MVP 能力
 

@@ -48,7 +48,7 @@ def get_latest_report() -> dict:
         "deepseek": generate_deepseek_report,
         "doubao": generate_doubao_report,
     }
-    provider_order = [settings.ai_provider, "openai", "deepseek", "doubao"]
+    provider_order = [settings.ai_provider, "deepseek", "doubao", "openai"]
 
     try:
         prompt = build_report_prompt()
