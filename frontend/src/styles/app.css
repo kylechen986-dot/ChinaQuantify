@@ -514,9 +514,19 @@ body {
 
 .stock-scroll-list {
   height: 620px;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid #eef2f6;
   border-radius: 8px;
+}
+
+.stock-table {
+  border-bottom: 1px solid #eef2f6;
+}
+
+.stock-table .el-table__header-wrapper th {
+  background: #f8fafc;
+  color: #667085;
+  font-weight: 800;
 }
 
 .stock-load-state {
@@ -532,6 +542,70 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+}
+
+.stock-detail-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.stock-action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.stock-action-card span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stock-action-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #101828;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.stock-action-card p {
+  margin: 8px 0 0;
+  color: #475467;
+  line-height: 1.7;
+}
+
+.stock-action-card.is-buy {
+  border-color: #fecdca;
+  background: #fff8f7;
+}
+
+.stock-action-card.is-hold {
+  border-color: #fedf89;
+  background: #fffbeb;
+}
+
+.stock-action-card.is-sell {
+  border-color: #abefc6;
+  background: #f6fef9;
+}
+
+.stock-action-card.is-neutral {
+  border-color: #b9d7ff;
+  background: #f7fbff;
+}
+
+.stock-confidence small {
+  display: block;
+  margin-bottom: 8px;
+  color: #667085;
+  font-size: 12px;
 }
 
 .stock-quick-grid {
@@ -570,6 +644,101 @@ body {
   margin: 0 0 8px;
   color: #101828;
   font-size: 15px;
+}
+
+.block-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.block-title-row h3 {
+  margin: 0;
+}
+
+.block-title-row span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.price-range {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.price-range-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #039855 0%, #f79009 50%, #d92d20 100%);
+}
+
+.price-range-track i {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #101828;
+  box-shadow: 0 3px 10px rgba(16, 24, 40, 0.22);
+  transform: translate(-50%, -50%);
+}
+
+.price-range-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #667085;
+  font-size: 12px;
+}
+
+.price-range-labels strong {
+  color: #101828;
+}
+
+.technical-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.technical-metric {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.technical-metric div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.technical-metric span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.technical-metric strong {
+  color: #101828;
+  font-size: 16px;
+}
+
+.technical-metric small {
+  color: #8a97a8;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .stock-analysis-block p,
