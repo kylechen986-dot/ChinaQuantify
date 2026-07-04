@@ -55,6 +55,7 @@
               <strong>{{ flow.note || flow.type_text }}</strong>
               <span v-if="flow.quantity">数量 {{ flow.quantity }} 股 · 单价 {{ formatMoney(flow.price) }}</span>
             </div>
+            <em>{{ flow.calculation_text }}</em>
             <b :class="profitClass(flow.amount)">{{ signedMoney(flow.amount) }}</b>
           </div>
         </article>

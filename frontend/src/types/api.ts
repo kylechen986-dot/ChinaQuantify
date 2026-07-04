@@ -285,9 +285,11 @@ export interface PortfolioCashflow {
   type_text: string
   quantity: number
   price: number
+  fee: number
   amount: number
   direction: 'in' | 'out'
   note: string
+  calculation_text: string
   related_lot_id: string
 }
 

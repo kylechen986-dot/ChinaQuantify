@@ -16,25 +16,55 @@ DEFAULT_PORTFOLIO = {
         {
             "symbol": "600519",
             "lots": [
-                {"id": "600519-1", "buy_date": "2026-06-18", "quantity": 50, "cost_price": 1208.0, "fee": 5.0},
-                {"id": "600519-2", "buy_date": "2026-06-27", "quantity": 50, "cost_price": 1198.0, "fee": 5.0},
+                {
+                    "id": "600519-1",
+                    "buy_date": "2026-06-18 10:12:08",
+                    "quantity": 50,
+                    "cost_price": 1208.0,
+                    "fee": 5.0,
+                },
+                {
+                    "id": "600519-2",
+                    "buy_date": "2026-06-27 14:23:35",
+                    "quantity": 50,
+                    "cost_price": 1198.0,
+                    "fee": 5.0,
+                },
             ],
         },
         {
             "symbol": "300750",
             "lots": [
-                {"id": "300750-1", "buy_date": "2026-06-20", "quantity": 60, "cost_price": 386.0, "fee": 5.0},
-                {"id": "300750-2", "buy_date": "2026-07-01", "quantity": 40, "cost_price": 376.88, "fee": 3.0},
+                {
+                    "id": "300750-1",
+                    "buy_date": "2026-06-20 09:45:16",
+                    "quantity": 60,
+                    "cost_price": 386.0,
+                    "fee": 5.0,
+                },
+                {
+                    "id": "300750-2",
+                    "buy_date": "2026-07-01 13:18:42",
+                    "quantity": 40,
+                    "cost_price": 376.88,
+                    "fee": 3.0,
+                },
             ],
         },
         {
             "symbol": "600288",
             "lots": [
-                {"id": "600288-1", "buy_date": "2026-06-21", "quantity": 600, "cost_price": 12.2, "fee": 5.0},
-                {"id": "600288-2", "buy_date": "2026-06-28", "quantity": 400, "cost_price": 13.2},
+                {
+                    "id": "600288-1",
+                    "buy_date": "2026-06-21 10:05:31",
+                    "quantity": 600,
+                    "cost_price": 12.2,
+                    "fee": 5.0,
+                },
+                {"id": "600288-2", "buy_date": "2026-06-28 14:02:19", "quantity": 400, "cost_price": 13.2},
             ],
             "cashflows": [
-                {"date": "2026-06-30", "type": "DIVIDEND", "amount": 32.0, "note": "示例分红入账"},
+                {"date": "2026-06-30 09:00:00", "type": "DIVIDEND", "amount": 32.0, "note": "示例分红入账"},
             ],
         },
     ],
@@ -216,6 +246,7 @@ def get_portfolio_overview() -> dict:
     market_value = 0.0
     cost_value = 0.0
     today_profit = 0.0
+    holding_profit = 0.0
 
     for raw in portfolio["positions"]:
         position = _build_position(raw)
@@ -225,12 +256,12 @@ def get_portfolio_overview() -> dict:
         market_value += position["market_value"]
         cost_value += position["cost_value"]
         today_profit += position["today_profit"]
+        holding_profit += position["holding_profit"]
         position.pop("_raw_cashflows", None)
         positions.append(position)
 
     cash_balance = float(portfolio["cash_balance"])
     total_assets = cash_balance + market_value
-    holding_profit = market_value - cost_value
     holding_profit_pct = holding_profit / cost_value * 100 if cost_value else 0
 
     if today_profit > 0:
@@ -280,6 +311,10 @@ def get_stock_cashflows(symbol: str) -> dict | None:
     for lot in position["lots"]:
         amount = -float(lot["cost_value"])
         fee_text = f"，含费用 {lot['fee']} 元" if float(lot.get("fee", 0)) else ""
+        calculation_text = (
+            f"{lot['cost_price']}/每股 × 买入：{lot['quantity']}股 + 收费：{lot['fee']}元 "
+            f"= {_money(amount):,.2f} 元"
+        )
         flows.append(
             {
                 "id": f"buy-{lot['id']}",
@@ -288,9 +323,11 @@ def get_stock_cashflows(symbol: str) -> dict | None:
                 "type_text": "买入",
                 "quantity": lot["quantity"],
                 "price": lot["cost_price"],
+                "fee": lot["fee"],
                 "amount": _money(amount),
                 "direction": "out",
                 "note": f"买入 {lot['quantity']} 股，买入价 {lot['cost_price']} 元{fee_text}",
+                "calculation_text": calculation_text,
                 "related_lot_id": lot["id"],
             }
         )
@@ -298,6 +335,7 @@ def get_stock_cashflows(symbol: str) -> dict | None:
     for index, flow in enumerate(position.pop("_raw_cashflows", []), start=1):
         flow_type = str(flow.get("type", "ADJUST")).upper()
         amount = float(flow.get("amount", 0))
+        calculation_text = str(flow.get("calculation_text") or f"{_flow_type_text(flow_type)}：{_money(amount):,.2f} 元")
         flows.append(
             {
                 "id": str(flow.get("id") or f"flow-{normalized}-{index}"),
@@ -306,13 +344,19 @@ def get_stock_cashflows(symbol: str) -> dict | None:
                 "type_text": _flow_type_text(flow_type),
                 "quantity": float(flow.get("quantity", 0)),
                 "price": _money(float(flow.get("price", 0))),
+                "fee": _money(float(flow.get("fee", 0))),
                 "amount": _money(amount),
                 "direction": "in" if amount >= 0 else "out",
                 "note": flow.get("note", ""),
+                "calculation_text": calculation_text,
                 "related_lot_id": flow.get("related_lot_id", ""),
             }
         )
 
+    market_calculation_text = (
+        f"{position['current_price']}/每股 × 当前持有：{position['quantity']}股 "
+        f"= +{position['market_value']:,.2f} 元"
+    )
     flows.append(
         {
             "id": f"market-value-{normalized}",
@@ -321,14 +365,16 @@ def get_stock_cashflows(symbol: str) -> dict | None:
             "type_text": "现在还值",
             "quantity": position["quantity"],
             "price": position["current_price"],
+            "fee": 0,
             "amount": position["market_value"],
             "direction": "in",
             "note": "按当前实时价格计算，表示这支股票如果现在全部卖出对应的账面市值。",
+            "calculation_text": market_calculation_text,
             "related_lot_id": "",
         }
     )
 
-    flows.sort(key=_flow_sort_key)
+    flows.sort(key=_flow_sort_key, reverse=True)
     total_inflow = sum(float(item["amount"]) for item in flows if float(item["amount"]) > 0)
     total_outflow = sum(float(item["amount"]) for item in flows if float(item["amount"]) < 0)
     net_cashflow = total_inflow + total_outflow

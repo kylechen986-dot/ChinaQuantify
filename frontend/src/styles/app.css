@@ -1361,9 +1361,9 @@ body {
 }
 
 .cashflow-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1fr) 190px;
   align-items: center;
-  justify-content: space-between;
   gap: 18px;
 }
 
@@ -1383,9 +1383,15 @@ body {
   font-size: 12px;
 }
 
+.cashflow-main em {
+  color: #d92d20;
+  font-style: normal;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .cashflow-main b {
-  flex-shrink: 0;
-  font-size: 20px;
+  font-size: 22px;
   text-align: right;
 }
 
