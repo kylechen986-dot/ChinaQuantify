@@ -1,0 +1,253 @@
+<title>ChinaQuantify 产品设计文档</title>
+
+<p><b>文档版本：</b>v0.1</p>
+<p><b>创建日期：</b>2026-07-04</p>
+<p><b>项目名称：</b>ChinaQuantify</p>
+<p><b>产品定位：</b>面向个人投资研究场景的国内 ETF AI 量化研究与日报系统。</p>
+
+<h1>一、产品概述</h1>
+<p>ChinaQuantify 的第一阶段目标不是自动实盘交易，而是构建一个稳定、可解释、可复盘的国内 ETF 量化研究工具。系统每天在收盘后自动拉取国内 ETF 行情数据，计算趋势和技术指标，运行基础策略回测，并由 AI 生成中文分析日报，帮助用户形成持续、结构化的市场观察习惯。</p>
+<p>产品核心原则是“AI 辅助研究，人保留决策”。GPT / Gemini 等大模型在系统中承担研究助理、代码解释员、报告撰写员和风险提示员角色，不直接作为买卖决策引擎，也不在 MVP 阶段触发自动下单。</p>
+
+<h1>二、背景与问题</h1>
+<p>国内个人投资者常见的问题是信息来源分散、复盘不连续、策略验证不系统。很多交易判断来自临时新闻、主观感觉或单一指标，缺少一套每天可重复执行的分析流程。量化工具虽然能解决一部分问题，但传统量化系统门槛较高，且对非专业用户来说，回测结果、指标信号和风险含义不够直观。</p>
+<p>大模型可以补上“解释”和“整理”的环节，但它不擅长直接预测价格。因此本产品把规则计算、数据处理和回测交给确定性的 Python 程序，把自然语言总结、风险解释和研究建议交给 AI，从而获得更稳的工程边界。</p>
+
+<h1>三、产品目标</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">目标</th>
+      <th background-color="light-gray">说明</th>
+      <th background-color="light-gray">MVP 验收方式</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>形成每日研究闭环</td>
+      <td>收盘后自动完成数据拉取、指标计算、信号判断、AI 日报生成。</td>
+      <td>每日可生成一份结构稳定的 ETF 量化日报。</td>
+    </tr>
+    <tr>
+      <td>降低复盘成本</td>
+      <td>用图表、表格和中文解释呈现趋势、指标、回测和风险。</td>
+      <td>用户能在 5 分钟内看懂当天市场状态。</td>
+    </tr>
+    <tr>
+      <td>建立策略验证框架</td>
+      <td>先支持均线、RSI、MACD 等基础策略回测，沉淀可扩展框架。</td>
+      <td>至少一个策略可以在多个 ETF 上跑出收益曲线和回撤。</td>
+    </tr>
+    <tr>
+      <td>控制交易风险</td>
+      <td>第一阶段不自动下单，不做高频，不做杠杆，不输出确定性预测。</td>
+      <td>所有交易相关输出均为“观察 / 谨慎 / 可关注”等提示。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1>四、用户与场景</h1>
+<p><b>核心用户。</b>熟悉基础开发或数据分析、关注国内 ETF 投资、希望用 AI 提升研究效率的个人用户。</p>
+<p><b>主要场景。</b>用户在每天收盘后打开系统，查看主要 ETF 的趋势状态、技术指标、策略信号、回测表现和 AI 生成的日报。用户不需要手动整理行情数据，也不需要每天重复编写分析模板。</p>
+<p><b>延展场景。</b>当日报稳定后，系统可以继续增加行业 ETF 轮动、指数强弱对比、可转债观察、基金组合监控、模拟盘和半自动交易提醒。</p>
+
+<h1>五、MVP 范围</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">模块</th>
+      <th background-color="light-gray">MVP 功能</th>
+      <th background-color="light-gray">暂不做</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>行情数据</td>
+      <td>支持 AkShare 拉取国内 ETF 日线行情，保存本地数据库。</td>
+      <td>实时行情、高频 Tick、Level2 数据。</td>
+    </tr>
+    <tr>
+      <td>标的池</td>
+      <td>沪深 300 ETF、创业板 ETF、科创 50 ETF、中证 500 ETF、红利 ETF。</td>
+      <td>全市场个股扫描、复杂选股。</td>
+    </tr>
+    <tr>
+      <td>指标分析</td>
+      <td>均线、MACD、RSI、成交量、趋势状态。</td>
+      <td>复杂机器学习因子库。</td>
+    </tr>
+    <tr>
+      <td>策略回测</td>
+      <td>双均线策略、RSI 策略、简单趋势跟踪策略。</td>
+      <td>组合优化、复杂撮合、高频回测。</td>
+    </tr>
+    <tr>
+      <td>AI 日报</td>
+      <td>基于指标、信号和回测结果生成中文日报。</td>
+      <td>让 AI 自动决策买卖或自动下单。</td>
+    </tr>
+    <tr>
+      <td>通知</td>
+      <td>先支持页面查看，后续支持邮件或企业微信。</td>
+      <td>多渠道复杂通知编排。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1>六、信息架构</h1>
+<p>前端采用管理台式信息架构，强调扫描、对比和复盘效率，不做营销式首页。</p>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">页面</th>
+      <th background-color="light-gray">路径</th>
+      <th background-color="light-gray">核心内容</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>总览</td>
+      <td>/dashboard</td>
+      <td>市场状态、今日信号、主要 ETF 表现、最新日报摘要。</td>
+    </tr>
+    <tr>
+      <td>国内 ETF 行情</td>
+      <td>/market</td>
+      <td>ETF 列表、涨跌幅、成交额、趋势、RSI、MACD 状态。</td>
+    </tr>
+    <tr>
+      <td>策略与信号</td>
+      <td>/strategy</td>
+      <td>策略配置、当前信号、信号历史、规则说明。</td>
+    </tr>
+    <tr>
+      <td>回测结果</td>
+      <td>/backtest</td>
+      <td>收益曲线、最大回撤、交易记录、指标统计。</td>
+    </tr>
+    <tr>
+      <td>AI 日报</td>
+      <td>/report</td>
+      <td>日报列表、日报详情、风险提示、AI 总结。</td>
+    </tr>
+    <tr>
+      <td>系统设置</td>
+      <td>/settings</td>
+      <td>数据源、标的池、AI Key、任务调度、通知配置。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1>七、核心流程</h1>
+<ol>
+  <li seq="auto">用户配置 ETF 标的池和基础策略参数。</li>
+  <li seq="auto">系统在收盘后自动拉取最新行情数据。</li>
+  <li seq="auto">系统计算技术指标并识别趋势状态。</li>
+  <li seq="auto">系统运行策略信号和轻量回测。</li>
+  <li seq="auto">系统把结构化数据传给 AI，生成中文日报。</li>
+  <li seq="auto">用户在前端查看日报、图表和风险提示。</li>
+  <li seq="auto">用户人工决定是否继续观察、调整策略或手动交易。</li>
+</ol>
+
+<h1>八、功能需求</h1>
+<h2>8.1 行情与标的池</h2>
+<p>系统应支持维护 ETF 标的池，包括代码、名称、市场、指数类型、启用状态和备注。行情拉取采用 AkShare，优先支持日线数据，后续再扩展周线和更小周期。</p>
+<p>行情页面需要支持按涨跌幅、成交额、趋势状态、RSI 区间和信号状态筛选。表格中的关键字段包括收盘价、涨跌幅、成交额、MA20、MA60、RSI14、MACD 状态、趋势状态和更新时间。</p>
+
+<h2>8.2 指标与信号</h2>
+<p>指标计算优先用 Pandas 和 NumPy 实现，避免 Python 3.14 环境下 TA-Lib 等依赖兼容性问题。MVP 至少支持 MA、EMA、MACD、RSI、成交量均线和简单趋势分类。</p>
+<p>信号不直接输出“买入 / 卖出”作为自动交易指令，而输出“观察 / 谨慎 / 可关注 / 风险升高”等研究提示，并展示触发依据。</p>
+
+<h2>8.3 回测</h2>
+<p>第一版回测采用轻量自研引擎，支持日线级别、单标的、固定手续费、简单滑点和全仓 / 固定仓位两种模式。回测结果需要展示年化收益、累计收益、最大回撤、胜率、交易次数、收益曲线和回撤曲线。</p>
+
+<h2>8.4 AI 日报</h2>
+<p>AI 日报应由结构化数据驱动，而不是让模型直接读取原始行情后自由发挥。日报内容包括市场概况、ETF 趋势状态、策略信号、回测表现、风险提示和次日观察重点。AI 输出必须包含免责声明，避免表达确定性收益承诺。</p>
+
+<h2>8.5 设置</h2>
+<p>系统设置包括数据源配置、AI Provider 配置、定时任务开关、标的池管理、策略参数默认值和通知配置。敏感配置只保存在后端环境变量或本地配置文件，不在前端明文展示完整值。</p>
+
+<h1>九、非功能需求</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">类别</th>
+      <th background-color="light-gray">要求</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>稳定性</td>
+      <td>任务失败可重试，失败原因可在任务日志中查看。</td>
+    </tr>
+    <tr>
+      <td>可解释性</td>
+      <td>所有信号必须展示触发条件和关键指标值。</td>
+    </tr>
+    <tr>
+      <td>性能</td>
+      <td>MVP 标的数量较少，日报生成应在 1 分钟内完成。</td>
+    </tr>
+    <tr>
+      <td>安全</td>
+      <td>API Key 不进 Git，不在日志输出完整值。</td>
+    </tr>
+    <tr>
+      <td>可扩展</td>
+      <td>行情源、策略、AI Provider 和通知渠道应可替换。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1>十、风险与边界</h1>
+<p><b>数据风险。</b>免费数据源可能存在延迟、字段调整或临时不可用，系统需要记录数据更新时间并支持手动重拉。</p>
+<p><b>模型风险。</b>AI 可能生成过度自信或解释偏差的文字，因此 AI 日报必须基于结构化输入，并保留规则计算结果作为事实来源。</p>
+<p><b>合规边界。</b>MVP 只做个人研究和辅助分析，不做代客理财、不做投资建议分发、不做自动实盘和高频交易。</p>
+
+<h1>十一、里程碑</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">阶段</th>
+      <th background-color="light-gray">目标</th>
+      <th background-color="light-gray">产出</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>M0 设计基线</td>
+      <td>完成产品、架构和详细设计文档。</td>
+      <td>三份飞书设计文档。</td>
+    </tr>
+    <tr>
+      <td>M1 项目骨架</td>
+      <td>搭建前后端工程、基础路由、API 健康检查。</td>
+      <td>Vue3 管理台和 FastAPI 服务。</td>
+    </tr>
+    <tr>
+      <td>M2 数据闭环</td>
+      <td>接入 AkShare，完成 ETF 行情入库和列表展示。</td>
+      <td>行情表格和数据同步任务。</td>
+    </tr>
+    <tr>
+      <td>M3 指标与回测</td>
+      <td>实现基础指标、信号和轻量回测。</td>
+      <td>策略页、回测页、收益曲线。</td>
+    </tr>
+    <tr>
+      <td>M4 AI 日报</td>
+      <td>生成并展示每日中文 AI 日报。</td>
+      <td>日报列表、日报详情、定时生成任务。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1>十二、MVP 验收清单</h1>
+<checkbox done="false">可维护 ETF 标的池。</checkbox>
+<checkbox done="false">可拉取并保存国内 ETF 日线行情。</checkbox>
+<checkbox done="false">可计算 MA、MACD、RSI 等基础指标。</checkbox>
+<checkbox done="false">可展示行情列表和趋势状态。</checkbox>
+<checkbox done="false">可运行至少一个基础策略回测。</checkbox>
+<checkbox done="false">可生成 AI 中文日报。</checkbox>
+<checkbox done="false">可在前端查看日报、图表和风险提示。</checkbox>
+<checkbox done="false">敏感配置不提交到 Git。</checkbox>
