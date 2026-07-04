@@ -1368,7 +1368,7 @@ body {
 
 .cashflow-main {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1fr) 190px;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1fr) 210px;
   align-items: center;
   gap: 18px;
 }
@@ -1389,15 +1389,69 @@ body {
   font-size: 12px;
 }
 
-.cashflow-main em {
-  color: #d92d20;
-  font-style: normal;
-  line-height: 1.6;
-  text-align: center;
+.cashflow-flow-copy strong {
+  font-size: 15px;
 }
 
-.cashflow-main b {
-  font-size: 22px;
+.cashflow-flow-copy span {
+  color: #8a97a8;
+}
+
+.cashflow-formula {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #e4eaf2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.cashflow-formula span {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  padding: 3px 8px;
+  border: 1px solid #b9d7ff;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1f7aec;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cashflow-formula em {
+  color: #667085;
+  font-style: normal;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.cashflow-amount-box {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 10px 12px;
+  border: 1px solid #e4eaf2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.cashflow-amount-box small {
+  color: #8a97a8;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cashflow-amount-box b {
+  margin-top: 4px;
+  font-size: 26px;
+  line-height: 1.2;
   text-align: right;
 }
 

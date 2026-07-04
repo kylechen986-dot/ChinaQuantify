@@ -54,12 +54,18 @@
             <el-tag :type="flow.amount >= 0 ? 'danger' : 'success'" effect="plain">{{ flow.type_text }}</el-tag>
           </div>
           <div class="cashflow-main">
-            <div>
+            <div class="cashflow-flow-copy">
               <strong>{{ flow.note || flow.type_text }}</strong>
               <span v-if="flow.quantity">数量 {{ flow.quantity }} 股 · 单价 {{ formatMoney(flow.price) }}</span>
             </div>
-            <em>{{ flow.calculation_text }}</em>
-            <b :class="profitClass(flow.amount)">{{ signedMoney(flow.amount) }}</b>
+            <div class="cashflow-formula">
+              <span>公式</span>
+              <em>{{ flow.calculation_text }}</em>
+            </div>
+            <div class="cashflow-amount-box">
+              <small>{{ flow.amount >= 0 ? '收入/价值' : '支出' }}</small>
+              <b :class="profitClass(flow.amount)">{{ signedMoney(flow.amount) }}</b>
+            </div>
           </div>
         </article>
       </div>
