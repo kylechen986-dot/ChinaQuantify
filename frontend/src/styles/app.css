@@ -948,6 +948,299 @@ body {
   white-space: pre-line;
 }
 
+.account-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.account-hero.is-profit {
+  border-color: #fecdca;
+  background: #fff8f7;
+}
+
+.account-hero.is-loss {
+  border-color: #abefc6;
+  background: #f6fef9;
+}
+
+.account-hero h2 {
+  margin: 8px 0 10px;
+  color: #101828;
+  font-size: 32px;
+  line-height: 1.25;
+}
+
+.account-hero p {
+  margin: 0;
+  color: #475467;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.account-hero-profit {
+  display: flex;
+  min-width: 250px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.account-hero-profit span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.account-hero-profit strong {
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.account-hero-profit small {
+  color: #667085;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.account-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.account-metric-card {
+  display: flex;
+  min-height: 118px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.account-metric-card span,
+.account-metric-card small {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.account-metric-card span {
+  font-size: 13px;
+}
+
+.account-metric-card small {
+  font-size: 12px;
+}
+
+.account-metric-card strong {
+  color: #101828;
+  font-size: 26px;
+}
+
+.account-time {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 17px !important;
+}
+
+.holding-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.holding-card {
+  display: flex;
+  min-height: 330px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.holding-card.is-profit {
+  border-color: #fecdca;
+  background: #fff8f7;
+}
+
+.holding-card.is-loss {
+  border-color: #abefc6;
+  background: #f6fef9;
+}
+
+.holding-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.holding-card-head strong {
+  display: block;
+  color: #101828;
+  font-size: 18px;
+}
+
+.holding-card-head span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.holding-profit-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.holding-profit-row div {
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.holding-profit-row span,
+.holding-profit-row small {
+  display: block;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.holding-profit-row strong {
+  display: block;
+  margin: 6px 0;
+  font-size: 22px;
+}
+
+.holding-card p {
+  margin: 0;
+  color: #344054;
+  font-weight: 800;
+  line-height: 1.7;
+}
+
+.holding-action-box {
+  padding: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.holding-action-box span {
+  display: block;
+  margin-bottom: 6px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.holding-action-box strong {
+  color: #101828;
+  line-height: 1.7;
+}
+
+.holding-data-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.holding-data-row span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eef2f6;
+  color: #475467;
+  font-size: 12px;
+}
+
+.holding-lot-collapse {
+  --el-collapse-border-color: transparent;
+  --el-collapse-header-bg-color: transparent;
+  --el-collapse-content-bg-color: transparent;
+}
+
+.holding-lot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holding-lot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.holding-lot-item strong,
+.holding-lot-item span,
+.holding-lot-item small {
+  display: block;
+}
+
+.holding-lot-item strong {
+  color: #101828;
+  font-size: 13px;
+}
+
+.holding-lot-item span,
+.holding-lot-item small {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.holding-lot-item b {
+  display: block;
+  font-size: 16px;
+  text-align: right;
+}
+
+.market-message-card {
+  padding: 16px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.market-message-card strong {
+  color: #101828;
+  font-size: 18px;
+}
+
+.market-message-card p {
+  margin: 8px 0 0;
+  color: #475467;
+  line-height: 1.8;
+}
+
+.is-profit {
+  color: #d92d20 !important;
+}
+
+.is-loss {
+  color: #039855 !important;
+}
+
+.is-flat {
+  color: #101828 !important;
+}
+
 .backtest-workspace {
   display: flex;
   flex-direction: column;

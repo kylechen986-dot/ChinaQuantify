@@ -226,3 +226,54 @@ export interface MonitorDashboard {
   }>
   recommendations: WatchStock[]
 }
+
+export interface PortfolioPosition {
+  symbol: string
+  name: string
+  quantity: number
+  avg_cost_price: number
+  current_price: number
+  market_value: number
+  cost_value: number
+  today_profit: number
+  today_profit_pct: number
+  holding_profit: number
+  holding_profit_pct: number
+  message: string
+  lots: Array<{
+    id: string
+    buy_date: string
+    quantity: number
+    cost_price: number
+    current_price: number
+    cost_value: number
+    market_value: number
+    profit: number
+    profit_pct: number
+    today_profit: number
+    is_profit: boolean
+    message: string
+  }>
+  action_hint: string
+  action_plan: WatchStock['action_plan']
+  data_source: string
+  synced_at: string
+}
+
+export interface PortfolioOverview {
+  synced_at: string
+  sync_timezone: string
+  currency: string
+  is_sample: boolean
+  headline: string
+  tone: 'profit' | 'loss' | 'flat'
+  cash_balance: number
+  market_value: number
+  total_assets: number
+  today_profit: number
+  today_profit_pct: number
+  holding_profit: number
+  holding_profit_pct: number
+  position_count: number
+  positions: PortfolioPosition[]
+}

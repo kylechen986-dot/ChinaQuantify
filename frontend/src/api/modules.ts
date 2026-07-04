@@ -5,6 +5,7 @@ import type {
   IndicatorSnapshot,
   MarketOverview,
   MonitorDashboard,
+  PortfolioOverview,
   MonitorSnapshot,
   StockIndustry,
   StockPage,
@@ -31,4 +32,5 @@ export const api = {
   monitorDashboard: () => getData<MonitorDashboard>('/monitor/dashboard'),
   collectMonitorSnapshot: () => postData<MonitorSnapshot>('/monitor/collect'),
   buildWeeklyReview: () => postData<WeeklyReview>('/monitor/weekly-review'),
+  portfolioOverview: () => getData<PortfolioOverview>('/portfolio/overview'),
 }

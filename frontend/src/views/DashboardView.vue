@@ -1,6 +1,14 @@
 <template>
   <div class="dashboard-stack">
     <el-alert
+      v-if="portfolio?.is_sample"
+      class="dashboard-alert"
+      title="当前为本地持仓账本示例数据，接入券商账户后这里会显示真实账户余额和真实持仓。"
+      type="info"
+      show-icon
+      :closable="false"
+    />
+    <el-alert
       v-if="errors.length"
       class="dashboard-alert"
       :title="errors.join('；')"
@@ -9,111 +17,141 @@
       :closable="false"
     />
 
-    <section class="dashboard-hero">
-      <div class="dashboard-market-hero">
-        <div class="eyebrow">今日市场</div>
-        <h2>{{ marketTone }} · {{ marketHeadline }}</h2>
-        <p>{{ marketSummary }}</p>
-        <div class="dashboard-chip-row">
-          <el-tag effect="plain">最强 {{ overview?.strongest.name ?? '-' }}</el-tag>
-          <el-tag type="info" effect="plain">最弱 {{ overview?.weakest.name ?? '-' }}</el-tag>
-          <el-tag type="success" effect="plain">{{ overview?.sync_timezone ?? 'Asia/Shanghai' }}</el-tag>
-        </div>
+    <section class="account-hero" :class="`is-${portfolio?.tone ?? 'flat'}`">
+      <div>
+        <div class="eyebrow">账户总览</div>
+        <h2>{{ portfolio?.headline ?? '正在读取账户收益' }}</h2>
+        <p>
+          当前总资产 {{ formatMoney(portfolio?.total_assets) }}，可用余额
+          {{ formatMoney(portfolio?.cash_balance) }}，股票市值 {{ formatMoney(portfolio?.market_value) }}。
+        </p>
       </div>
-
-      <div class="dashboard-sync-panel">
-        <span>行情同步</span>
-        <strong>{{ overview?.synced_at ?? '正在同步' }}</strong>
-        <small>精确到秒，刷新页面会重新拉取当前行情快照。</small>
-        <el-progress :percentage="marketBreadth" :color="marketBreadthColor" :show-text="false" />
+      <div class="account-hero-profit">
+        <span>今日盈亏</span>
+        <strong :class="profitClass(portfolio?.today_profit)">
+          {{ signedMoney(portfolio?.today_profit) }}
+        </strong>
+        <small>{{ signedPercent(portfolio?.today_profit_pct) }}</small>
       </div>
     </section>
 
-    <div class="page-grid">
-      <MetricCard label="跟踪 ETF" :value="overview?.symbol_count ?? '-'" hint="国内 ETF MVP 标的池" />
-      <MetricCard label="上涨数量" :value="overview?.up_count ?? '-'" hint="今日涨幅为正" />
-      <MetricCard label="下跌数量" :value="overview?.down_count ?? '-'" hint="今日涨幅为负" />
-      <MetricCard label="市场宽度" :value="`${marketBreadth}%`" hint="上涨标的占比" />
+    <div class="account-metric-grid">
+      <article class="account-metric-card">
+        <span>账户余额</span>
+        <strong>{{ formatMoney(portfolio?.cash_balance) }}</strong>
+        <small>当前可用现金</small>
+      </article>
+      <article class="account-metric-card">
+        <span>股票市值</span>
+        <strong>{{ formatMoney(portfolio?.market_value) }}</strong>
+        <small>{{ portfolio?.position_count ?? 0 }} 只持仓</small>
+      </article>
+      <article class="account-metric-card">
+        <span>持仓累计盈亏</span>
+        <strong :class="profitClass(portfolio?.holding_profit)">
+          {{ signedMoney(portfolio?.holding_profit) }}
+        </strong>
+        <small>{{ signedPercent(portfolio?.holding_profit_pct) }}</small>
+      </article>
+      <article class="account-metric-card">
+        <span>同步时间</span>
+        <strong class="account-time">{{ portfolio?.synced_at ?? '-' }}</strong>
+        <small>{{ portfolio?.sync_timezone ?? 'Asia/Shanghai' }}</small>
+      </article>
     </div>
 
-    <div class="dashboard-grid">
-      <section class="dashboard-panel dashboard-panel-large">
-        <div class="dashboard-panel-head">
-          <div>
-            <h3>ETF 市场概览</h3>
-            <p>先看哪些方向更强，再进入行情页看完整指标。</p>
-          </div>
-          <el-tag effect="plain">{{ overview?.trade_date ?? '今日' }}</el-tag>
+    <section class="dashboard-panel">
+      <div class="dashboard-panel-head">
+        <div>
+          <h3>我的持仓今天怎么样</h3>
+          <p>先看每只股票今天赚了还是亏了，再决定要不要去操作看板看详细建议。</p>
         </div>
-        <el-table :data="overview?.snapshots ?? []" height="340" v-loading="marketLoading">
-          <el-table-column prop="symbol" label="代码" width="100" />
-          <el-table-column prop="name" label="名称" min-width="140" />
-          <el-table-column prop="synced_at" label="同步时间" width="170" />
-          <el-table-column prop="close" label="收盘" width="100" />
-          <el-table-column prop="change_pct" label="涨跌幅" width="110">
-            <template #default="{ row }">
-              <span :class="row.change_pct >= 0 ? 'text-up' : 'text-down'">{{ row.change_pct }}%</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="rsi14" label="RSI14" width="90" />
-          <el-table-column label="趋势" width="120">
-            <template #default="{ row }">
-              <el-tag :type="trendTagType(row.trend_state)" effect="plain">{{ trendText(row.trend_state) }}</el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-      </section>
+        <el-button size="small" :loading="loading" @click="loadDashboard">刷新</el-button>
+      </div>
 
-      <section class="dashboard-panel">
-        <div class="dashboard-panel-head">
-          <div>
-            <h3>策略信号</h3>
-            <p>只做研究提醒，不自动下单。</p>
-          </div>
-          <el-tag type="info" effect="plain">{{ signals.length }} 条</el-tag>
-        </div>
-        <div class="dashboard-signal-list" v-if="signals.length">
-          <article v-for="signal in signals" :key="signal.symbol" class="dashboard-signal">
+      <div v-if="portfolio?.positions.length" class="holding-card-grid">
+        <article
+          v-for="position in portfolio.positions"
+          :key="position.symbol"
+          class="holding-card"
+          :class="profitClass(position.today_profit)"
+        >
+          <div class="holding-card-head">
             <div>
-              <strong>{{ signal.name }}</strong>
-              <p>{{ signal.reason }}</p>
+              <strong>{{ position.name }}</strong>
+              <span>{{ position.symbol }} · {{ position.quantity }} 股</span>
             </div>
-            <el-tag :type="signal.signal_type === 'CAUTION' ? 'warning' : 'success'" effect="plain">
-              {{ signal.signal_type }} · {{ signal.signal_score }}
+            <el-tag :type="position.today_profit > 0 ? 'danger' : position.today_profit < 0 ? 'success' : 'info'" effect="dark">
+              {{ position.today_profit > 0 ? '今天赚钱' : position.today_profit < 0 ? '今天亏钱' : '今天持平' }}
             </el-tag>
-          </article>
-        </div>
-        <el-skeleton v-else-if="signalLoading" :rows="5" animated />
-        <el-empty v-else description="暂无策略信号" />
-      </section>
+          </div>
 
+          <div class="holding-profit-row">
+            <div>
+              <span>今天</span>
+              <strong :class="profitClass(position.today_profit)">{{ signedMoney(position.today_profit) }}</strong>
+              <small>{{ signedPercent(position.today_profit_pct) }}</small>
+            </div>
+            <div>
+              <span>累计</span>
+              <strong :class="profitClass(position.holding_profit)">{{ signedMoney(position.holding_profit) }}</strong>
+              <small>{{ signedPercent(position.holding_profit_pct) }}</small>
+            </div>
+          </div>
+
+          <p>{{ position.message }}</p>
+          <div class="holding-action-box">
+            <span>现在怎么处理</span>
+            <strong>{{ position.action_hint }}</strong>
+          </div>
+          <div class="holding-data-row">
+            <span>总份额 {{ position.quantity }} 股</span>
+            <span>持仓均价 {{ formatMoney(position.avg_cost_price) }}</span>
+            <span>现价 {{ formatMoney(position.current_price) }}</span>
+            <span>市值 {{ formatMoney(position.market_value) }}</span>
+          </div>
+
+          <el-collapse class="holding-lot-collapse">
+            <el-collapse-item title="查看每笔买入赚赔" :name="position.symbol">
+              <div class="holding-lot-list">
+                <article v-for="lot in position.lots" :key="lot.id" class="holding-lot-item">
+                  <div>
+                    <strong>{{ lot.buy_date || '买入批次' }}</strong>
+                    <span>{{ lot.quantity }} 股 · 买入价 {{ formatMoney(lot.cost_price) }}</span>
+                  </div>
+                  <div>
+                    <b :class="profitClass(lot.profit)">{{ signedMoney(lot.profit) }}</b>
+                    <small>{{ signedPercent(lot.profit_pct) }}</small>
+                  </div>
+                </article>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </article>
+      </div>
+      <el-skeleton v-else-if="loading" :rows="8" animated />
+      <el-empty v-else description="暂无持仓数据" />
+    </section>
+
+    <div class="dashboard-grid">
       <section class="dashboard-panel">
         <div class="dashboard-panel-head">
           <div>
-            <h3>关注个股</h3>
-            <p>结合整体市场看关注队列。</p>
+            <h3>今天市场背景</h3>
+            <p>用来解释你的持仓是顺着市场涨跌，还是自己更强/更弱。</p>
           </div>
-          <el-tag type="success" effect="plain">{{ watchStocks.length }} 只</el-tag>
+          <el-tag effect="plain">{{ overview?.synced_at ?? '-' }}</el-tag>
         </div>
-        <div class="dashboard-watch-list" v-if="watchStocks.length">
-          <article v-for="stock in watchStocks" :key="stock.symbol" class="dashboard-watch-item">
-            <div class="dashboard-watch-head">
-              <div>
-                <strong>{{ stock.name }}</strong>
-                <span>{{ stock.symbol }} · {{ stock.industry }}</span>
-              </div>
-              <b :class="stock.change_pct >= 0 ? 'text-up' : 'text-down'">{{ stock.change_pct }}%</b>
-            </div>
-            <div class="dashboard-watch-data">
-              <span>现价 {{ stock.close }}</span>
-              <span>RSI {{ stock.rsi14 }}</span>
-              <span>评分 {{ stock.signal_score }}</span>
-            </div>
-            <p>{{ stock.plain_analysis }}</p>
-          </article>
+        <div class="market-message-card">
+          <strong>{{ marketTone }} · {{ marketHeadline }}</strong>
+          <p>{{ marketSummary }}</p>
+          <div class="dashboard-chip-row">
+            <el-tag effect="plain">最强 {{ overview?.strongest.name ?? '-' }}</el-tag>
+            <el-tag type="info" effect="plain">最弱 {{ overview?.weakest.name ?? '-' }}</el-tag>
+            <el-tag type="success" effect="plain">上涨 {{ overview?.up_count ?? '-' }} 只</el-tag>
+            <el-tag type="warning" effect="plain">下跌 {{ overview?.down_count ?? '-' }} 只</el-tag>
+          </div>
         </div>
-        <el-skeleton v-else-if="stockLoading" :rows="5" animated />
-        <el-empty v-else description="暂无关注个股" />
       </section>
 
       <section class="dashboard-panel">
@@ -122,14 +160,12 @@
             <h3>AI 日报摘要</h3>
             <p>{{ report?.model_provider ?? 'AI' }} · {{ report?.report_date ?? '今日' }}</p>
           </div>
-          <el-button size="small" :loading="loading" @click="loadDashboard">刷新</el-button>
         </div>
         <template v-if="report">
           <h4 class="dashboard-report-title">{{ report.title }}</h4>
           <p class="dashboard-report-summary">{{ report.summary }}</p>
-          <div class="dashboard-report-content">{{ report.content }}</div>
         </template>
-        <el-skeleton v-else-if="reportLoading" :rows="8" animated />
+        <el-skeleton v-else-if="reportLoading" :rows="5" animated />
         <el-empty v-else description="暂无日报摘要" />
       </section>
     </div>
@@ -140,17 +176,12 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../api/modules'
-import MetricCard from '../components/MetricCard.vue'
-import type { AiReport, MarketOverview, StrategySignal, WatchStock } from '../types/api'
+import type { AiReport, MarketOverview, PortfolioOverview } from '../types/api'
 
 const overview = ref<MarketOverview>()
+const portfolio = ref<PortfolioOverview>()
 const report = ref<AiReport>()
-const signals = ref<StrategySignal[]>([])
-const watchStocks = ref<WatchStock[]>([])
 const loading = ref(false)
-const marketLoading = ref(false)
-const signalLoading = ref(false)
-const stockLoading = ref(false)
 const reportLoading = ref(false)
 const errors = ref<string[]>([])
 
@@ -161,17 +192,6 @@ const marketTone = computed(() => {
   return '震荡'
 })
 
-const marketBreadth = computed(() => {
-  if (!overview.value?.symbol_count) return 0
-  return Math.round((overview.value.up_count / overview.value.symbol_count) * 100)
-})
-
-const marketBreadthColor = computed(() => {
-  if (marketBreadth.value >= 60) return '#d92d20'
-  if (marketBreadth.value <= 40) return '#039855'
-  return '#1f7aec'
-})
-
 const marketHeadline = computed(() => {
   const strongest = overview.value?.strongest
   if (!strongest) return '等待行情数据'
@@ -180,57 +200,59 @@ const marketHeadline = computed(() => {
 
 const marketSummary = computed(() => {
   const current = overview.value
-  if (!current) return '正在读取 ETF 行情、策略信号和关注个股。'
+  if (!current) return '正在读取市场背景。'
   return `当前跟踪 ${current.symbol_count} 只 ETF，上涨 ${current.up_count} 只、下跌 ${current.down_count} 只。最强方向是 ${current.strongest.name}，最弱方向是 ${current.weakest.name}。`
 })
 
-function trendText(value: string) {
-  const map: Record<string, string> = {
-    STRONG_UP: '强势上行',
-    UP: '上行',
-    SIDEWAYS: '震荡',
-    DOWN: '转弱',
-  }
-  return map[value] ?? value
+function formatMoney(value: number | undefined) {
+  if (typeof value !== 'number') return '-'
+  return `¥${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function trendTagType(value: string) {
-  if (value === 'STRONG_UP' || value === 'UP') return 'success'
-  if (value === 'DOWN') return 'warning'
-  return 'info'
+function signedMoney(value: number | undefined) {
+  if (typeof value !== 'number') return '-'
+  if (value > 0) return `+${formatMoney(value)}`
+  if (value < 0) return `-¥${Math.abs(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatMoney(value)
 }
 
-async function loadPart<T>(task: Promise<T>, label: string, loadingRef: typeof loading, apply: (data: T) => void) {
-  loadingRef.value = true
-  try {
-    apply(await task)
-  } catch (err) {
-    errors.value.push(`${label}加载失败`)
-  } finally {
-    loadingRef.value = false
-  }
+function signedPercent(value: number | undefined) {
+  if (typeof value !== 'number') return '-'
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+function profitClass(value: number | undefined) {
+  if (!value) return 'is-flat'
+  return value > 0 ? 'is-profit' : 'is-loss'
 }
 
 async function loadDashboard() {
   loading.value = true
+  reportLoading.value = true
   errors.value = []
   try {
-    await Promise.allSettled([
-      loadPart(api.marketOverview(), '市场概览', marketLoading, (data) => {
-        overview.value = data
-      }),
-      loadPart(api.signals(), '策略信号', signalLoading, (data) => {
-        signals.value = data
-      }),
-      loadPart(api.watchStocks(), '关注个股', stockLoading, (data) => {
-        watchStocks.value = data
-      }),
-      loadPart(api.latestReport(), 'AI 日报', reportLoading, (data) => {
-        report.value = data
-      }),
+    const [portfolioResult, marketResult, reportResult] = await Promise.allSettled([
+      api.portfolioOverview(),
+      api.marketOverview(),
+      api.latestReport(),
     ])
+    if (portfolioResult.status === 'fulfilled') {
+      portfolio.value = portfolioResult.value
+    } else {
+      errors.value.push('账户数据加载失败')
+    }
+    if (marketResult.status === 'fulfilled') {
+      overview.value = marketResult.value
+    } else {
+      errors.value.push('市场背景加载失败')
+    }
+    if (reportResult.status === 'fulfilled') {
+      report.value = reportResult.value
+    }
   } finally {
     loading.value = false
+    reportLoading.value = false
   }
 }
 
