@@ -7,5 +7,7 @@ export const api = {
   indicators: () => getData<IndicatorSnapshot[]>('/indicators/latest'),
   signals: () => getData<StrategySignal[]>('/strategies/signals'),
   backtestSummary: () => getData<BacktestSummary>('/backtests/summary'),
+  reports: () => getData<AiReport[]>('/reports'),
+  reportDetail: (id: number) => getData<AiReport>(`/reports/${id}`),
   latestReport: () => getData<AiReport>('/reports/latest'),
 }

@@ -68,4 +68,7 @@ export interface AiReport {
   content: string
   model_provider: string
   model_name: string
+  market_tone?: string
+  llm_usage?: Record<string, unknown>
+  llm_error?: string
 }
