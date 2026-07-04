@@ -121,6 +121,12 @@ body {
   font-weight: 800;
 }
 
+.metric-value-compact {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 18px;
+  line-height: 30px;
+}
+
 .metric-hint {
   margin-top: 8px;
   color: #8a97a8;
@@ -131,6 +137,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .chart {

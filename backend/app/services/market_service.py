@@ -1,4 +1,8 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+
+SYNC_TIMEZONE = "Asia/Shanghai"
 
 
 SYMBOLS = [
@@ -14,12 +18,19 @@ def get_symbols() -> list[dict]:
     return SYMBOLS
 
 
-def get_indicator_snapshots() -> list[dict]:
+def get_sync_time() -> str:
+    return datetime.now(ZoneInfo(SYNC_TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_indicator_snapshots(synced_at: str | None = None) -> list[dict]:
+    current_synced_at = synced_at or get_sync_time()
     return [
         {
             "symbol": item["symbol"],
             "name": item["name"],
             "trade_date": str(date.today()),
+            "synced_at": current_synced_at,
+            "sync_timezone": SYNC_TIMEZONE,
             "close": round(3.2 + idx * 0.37, 3),
             "change_pct": [0.42, -0.86, 1.12, 0.18, -0.24][idx],
             "ma20": round(3.1 + idx * 0.35, 3),
@@ -33,11 +44,14 @@ def get_indicator_snapshots() -> list[dict]:
 
 
 def get_market_overview() -> dict:
-    snapshots = get_indicator_snapshots()
+    synced_at = get_sync_time()
+    snapshots = get_indicator_snapshots(synced_at)
     up_count = sum(1 for item in snapshots if item["change_pct"] > 0)
     down_count = len(snapshots) - up_count
     return {
         "trade_date": str(date.today()),
+        "synced_at": synced_at,
+        "sync_timezone": SYNC_TIMEZONE,
         "symbol_count": len(snapshots),
         "up_count": up_count,
         "down_count": down_count,

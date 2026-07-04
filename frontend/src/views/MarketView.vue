@@ -3,6 +3,7 @@
     <template #header>
       <div class="card-header">
         <span>国内 ETF 行情</span>
+        <span class="muted">同步时间：{{ syncTime }}</span>
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
       </div>
     </template>
@@ -10,6 +11,7 @@
       <el-table-column prop="symbol" label="代码" width="100" />
       <el-table-column prop="name" label="名称" min-width="150" />
       <el-table-column prop="trade_date" label="日期" width="120" />
+      <el-table-column prop="synced_at" label="同步时间" width="170" />
       <el-table-column prop="close" label="收盘价" width="100" />
       <el-table-column prop="change_pct" label="涨跌幅" width="110">
         <template #default="{ row }">
@@ -37,9 +39,11 @@ import { api } from '../api/modules'
 import type { IndicatorSnapshot } from '../types/api'
 
 const rows = ref<IndicatorSnapshot[]>([])
+const syncTime = ref('-')
 
 async function loadData() {
   rows.value = await api.indicators()
+  syncTime.value = rows.value[0]?.synced_at ?? '-'
 }
 
 onMounted(loadData)

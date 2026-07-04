@@ -9,6 +9,8 @@ export interface IndicatorSnapshot {
   symbol: string
   name: string
   trade_date: string
+  synced_at: string
+  sync_timezone: string
   close: number
   change_pct: number
   ma20: number
@@ -20,6 +22,8 @@ export interface IndicatorSnapshot {
 
 export interface MarketOverview {
   trade_date: string
+  synced_at: string
+  sync_timezone: string
   symbol_count: number
   up_count: number
   down_count: number

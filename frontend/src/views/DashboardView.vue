@@ -3,7 +3,7 @@
     <MetricCard label="跟踪标的" :value="overview?.symbol_count ?? '-'" hint="国内 ETF MVP 标的池" />
     <MetricCard label="上涨数量" :value="overview?.up_count ?? '-'" hint="今日涨幅为正" />
     <MetricCard label="下跌数量" :value="overview?.down_count ?? '-'" hint="今日涨幅为负" />
-    <MetricCard label="最新日报" :value="report?.report_date ?? '-'" hint="收盘后生成" />
+    <MetricCard label="行情同步" :value="overview?.synced_at ?? '-'" hint="Asia/Shanghai 精确到秒" compact />
   </div>
 
   <div class="section-grid">
@@ -12,6 +12,7 @@
       <el-table :data="overview?.snapshots ?? []" height="360">
         <el-table-column prop="symbol" label="代码" width="100" />
         <el-table-column prop="name" label="名称" min-width="140" />
+        <el-table-column prop="synced_at" label="同步时间" width="170" />
         <el-table-column prop="close" label="收盘" width="100" />
         <el-table-column prop="change_pct" label="涨跌幅" width="110">
           <template #default="{ row }">
