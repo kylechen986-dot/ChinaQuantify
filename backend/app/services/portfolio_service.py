@@ -94,6 +94,11 @@ def _pct(value: float) -> float:
     return round(value, 2)
 
 
+def _formula_money(value: float) -> str:
+    sign = "-" if value < 0 else ""
+    return f"{sign}¥{abs(value):,.2f}"
+
+
 def _position_message(today_profit: float, holding_profit: float) -> str:
     if today_profit > 0:
         return f"今天赚了 {_money(today_profit)} 元，持仓累计盈亏 {_money(holding_profit)} 元。"
@@ -139,7 +144,6 @@ def _flow_type_text(value: str) -> str:
         "FEE": "手续费",
         "TAX": "税费",
         "ADJUST": "资金调整",
-        "MARKET_VALUE": "现在价值",
     }
     return mapping.get(value, value)
 
@@ -312,8 +316,8 @@ def get_stock_cashflows(symbol: str) -> dict | None:
         amount = -float(lot["cost_value"])
         fee_text = f"，含费用 {lot['fee']} 元" if float(lot.get("fee", 0)) else ""
         calculation_text = (
-            f"{lot['cost_price']}/每股 × 买入：{lot['quantity']}股 + 收费：{lot['fee']}元 "
-            f"= {_money(amount):,.2f} 元"
+            f"{_formula_money(float(lot['cost_price']))}/股 × {float(lot['quantity']):g} 股 "
+            f"+ 收费 {_formula_money(float(lot['fee']))} = {_formula_money(amount)}"
         )
         flows.append(
             {
@@ -335,7 +339,7 @@ def get_stock_cashflows(symbol: str) -> dict | None:
     for index, flow in enumerate(position.pop("_raw_cashflows", []), start=1):
         flow_type = str(flow.get("type", "ADJUST")).upper()
         amount = float(flow.get("amount", 0))
-        calculation_text = str(flow.get("calculation_text") or f"{_flow_type_text(flow_type)}：{_money(amount):,.2f} 元")
+        calculation_text = str(flow.get("calculation_text") or f"{_flow_type_text(flow_type)}：{_formula_money(amount)}")
         flows.append(
             {
                 "id": str(flow.get("id") or f"flow-{normalized}-{index}"),
@@ -353,30 +357,10 @@ def get_stock_cashflows(symbol: str) -> dict | None:
             }
         )
 
-    market_calculation_text = (
-        f"{position['current_price']}/每股 × 当前持有：{position['quantity']}股 "
-        f"= +{position['market_value']:,.2f} 元"
-    )
-    flows.append(
-        {
-            "id": f"market-value-{normalized}",
-            "date": get_sync_time(),
-            "type": "MARKET_VALUE",
-            "type_text": "现在价值",
-            "quantity": position["quantity"],
-            "price": position["current_price"],
-            "fee": 0,
-            "amount": position["market_value"],
-            "direction": "in",
-            "note": "按当前实时价格计算，表示这支股票如果现在全部卖出对应的账面市值。",
-            "calculation_text": market_calculation_text,
-            "related_lot_id": "",
-        }
-    )
-
     flows.sort(key=_flow_sort_key, reverse=True)
-    total_inflow = sum(float(item["amount"]) for item in flows if float(item["amount"]) > 0)
+    real_inflow = sum(float(item["amount"]) for item in flows if float(item["amount"]) > 0)
     total_outflow = sum(float(item["amount"]) for item in flows if float(item["amount"]) < 0)
+    total_inflow = real_inflow + float(position["market_value"])
     net_cashflow = total_inflow + total_outflow
     position.pop("_raw_cashflows", None)
     return {

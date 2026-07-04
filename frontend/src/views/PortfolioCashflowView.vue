@@ -9,7 +9,11 @@
           当前还拿着的股票市值也是正数，全部加起来就是这支股票现在赚还是赔。
         </p>
         <div class="cashflow-value-rule">
-          现在价值 = 持仓 {{ detail?.quantity ?? '-' }} 股 / 当前最新单价 {{ formatMoney(detail?.current_price) }}
+          <span>公式</span>
+          <div>
+            <strong>持仓股数 × 当前最新单价 = 当前市值</strong>
+            <em>{{ detail?.quantity ?? '-' }} 股 × {{ formatMoney(detail?.current_price) }} = {{ formatMoney(detail?.market_value) }}</em>
+          </div>
         </div>
       </div>
       <el-button @click="router.back()">返回</el-button>
@@ -60,12 +64,12 @@
             </div>
             <div class="cashflow-formula">
               <span>公式</span>
-              <em>{{ flow.calculation_text }}</em>
+              <div>
+                <strong>{{ formulaTitle(flow.type) }}</strong>
+                <em>{{ flow.calculation_text }}</em>
+              </div>
             </div>
-            <div class="cashflow-amount-box">
-              <small>{{ flow.amount >= 0 ? '收入/价值' : '支出' }}</small>
-              <b :class="profitClass(flow.amount)">{{ signedMoney(flow.amount) }}</b>
-            </div>
+            <b class="cashflow-row-amount" :class="profitClass(flow.amount)">{{ signedMoney(flow.amount) }}</b>
           </div>
         </article>
       </div>
@@ -108,6 +112,15 @@ function signedPercent(value: number | undefined) {
 function profitClass(value: number | undefined) {
   if (!value) return 'is-flat'
   return value > 0 ? 'is-profit' : 'is-loss'
+}
+
+function formulaTitle(type: string) {
+  const map: Record<string, string> = {
+    BUY: '买入单价 × 买入股数 + 收费 = 本笔支出',
+    SELL: '卖出收入 - 收费 = 本笔收入',
+    DIVIDEND: '分红到账 = 本笔收入',
+  }
+  return map[type] ?? '这笔交易金额 = 本笔收入或支出'
 }
 
 onMounted(async () => {

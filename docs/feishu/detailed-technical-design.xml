@@ -1,650 +1,349 @@
 <title>ChinaQuantify 详细技术设计文档</title>
 
-<p><b>文档版本：</b>v0.1</p>
-<p><b>创建日期：</b>2026-07-04</p>
-<p><b>适用阶段：</b>MVP 阶段，覆盖工程结构、数据模型、核心算法、接口和任务设计。</p>
+<p><b>文档版本：</b>v0.2</p>
+<p><b>更新日期：</b>2026-07-04</p>
+<p><b>适用阶段：</b>MVP 阶段。本文覆盖当前已落地的 Vue3 前端、FastAPI 后端、账户总览、资金流水、关注股票、操作看板、AI 日报和定时采集。</p>
 
 <h1>一、设计范围</h1>
-<p>本文档描述 ChinaQuantify MVP 的详细技术实现方案。范围包括前端工程结构、后端工程结构、数据库表设计、行情同步、指标计算、策略信号、轻量回测、AI 日报、任务调度和接口设计。</p>
-<p>MVP 不包含自动实盘交易、不包含高频行情、不包含多用户权限体系、不包含复杂机器学习因子平台。</p>
+<p>本文档描述 ChinaQuantify MVP 的详细技术实现。系统面向小白用户，核心不是展示复杂金融术语，而是把真实行情、账户盈亏、交易流水、每日建议和每周复盘转成可读、可解释、可对账的看板。</p>
+<p>MVP 不包含自动实盘交易、券商下单、多用户权限、高频 Tick、复杂机器学习因子和收益承诺。所有交易建议仅用于个人研究辅助。</p>
 
-<h1>二、仓库结构</h1>
-<pre lang="text" caption="建议目录结构"><code>ChinaQuantify/
-  frontend/
-    src/
-      api/
-      assets/
-      charts/
-      components/
-      layouts/
-      router/
-      stores/
-      styles/
-      types/
-      views/
-  backend/
-    app/
-      api/
-      core/
-      domain/
-      jobs/
-      models/
-      repositories/
-      schemas/
-      services/
+<h1>二、工程结构</h1>
+<pre lang="text" caption="当前工程结构"><code>ChinaQuantify
+  frontend
+    src
+      api
+      layouts
+      router
+      styles
+      types
+      views
+  backend
+    app
+      api
+        routes
+      core
+      schemas
+      services
       main.py
-    tests/
-  deploy/
-    docker-compose.yml
-  docs/
-    feishu/</code></pre>
-
-<h1>三、后端模块设计</h1>
+    local_data
+      portfolio.json
+      monitoring
+  deploy
+  docs
+    feishu</code></pre>
 <table>
   <thead>
     <tr>
-      <th background-color="light-gray">模块</th>
-      <th background-color="light-gray">关键文件</th>
+      <th background-color="light-gray">层级</th>
       <th background-color="light-gray">职责</th>
+      <th background-color="light-gray">关键约束</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>core</td>
-      <td>config.py、logging.py、database.py</td>
-      <td>配置加载、日志、数据库连接、异常处理。</td>
-    </tr>
-    <tr>
-      <td>api</td>
-      <td>routers/*.py</td>
-      <td>REST 路由和依赖注入。</td>
-    </tr>
-    <tr>
-      <td>models</td>
-      <td>*.py</td>
-      <td>SQLAlchemy ORM 模型。</td>
-    </tr>
-    <tr>
-      <td>schemas</td>
-      <td>*.py</td>
-      <td>Pydantic DTO。</td>
-    </tr>
-    <tr>
-      <td>repositories</td>
-      <td>*.py</td>
-      <td>数据库查询和写入。</td>
-    </tr>
-    <tr>
-      <td>services</td>
-      <td>market_service.py、report_service.py</td>
-      <td>业务流程编排。</td>
-    </tr>
-    <tr>
-      <td>domain</td>
-      <td>indicators.py、strategies.py、backtest.py</td>
-      <td>纯计算逻辑，不依赖 Web 框架。</td>
-    </tr>
-    <tr>
-      <td>jobs</td>
-      <td>scheduler.py、daily_report_job.py</td>
-      <td>定时任务、任务状态记录。</td>
-    </tr>
+    <tr><td>frontend</td><td>看板、消息卡片、资金流水、历史日报和关注股票交互。</td><td>页面表达优先小白化，专业指标只作为展开信息。</td></tr>
+    <tr><td>backend/app/api</td><td>REST API 路由。</td><td>统一返回 ApiResponse，不在路由层写复杂业务逻辑。</td></tr>
+    <tr><td>backend/app/services</td><td>行情、账户、监控、日报、模型调用。</td><td>金额和盈亏必须确定性计算，不能交给 AI。</td></tr>
+    <tr><td>backend/local_data</td><td>MVP 本地数据落地。</td><td>后续迁移数据库前保留 JSON 结构稳定性。</td></tr>
   </tbody>
 </table>
 
+<h1>三、核心业务流程</h1>
+<h2>（一）账户总览流程</h2>
+<pre lang="text" caption="账户总览"><code>读取 portfolio.json
+  -> 按股票代码获取真实最新价
+  -> 按每个买入批次计算成本、市值、盈亏
+  -> 汇总现金、股票市值、总资产、今日盈亏
+  -> 返回 DashboardView 展示</code></pre>
+
+<h2>（二）资金流水流程</h2>
+<pre lang="text" caption="资金流水"><code>读取某支股票持仓
+  -> 每个买入批次生成一条真实买入流水
+  -> 读取卖出、分红、费用等真实现金流水
+  -> 当前市值只用于顶部汇总，不插入流水列表
+  -> 所有真实流水按交易时间倒序返回
+  -> 前端显示公式模板、代入金额和行尾大金额</code></pre>
+
+<h2>（三）操作看板流程</h2>
+<pre lang="text" caption="操作看板"><code>定时或手动触发采集
+  -> 拉取关注股票和推荐股票最新行情
+  -> 计算短线趋势、动能、风险和评分
+  -> 生成小白化动作：建议试买、继续观察、降低优先级、暂时回避
+  -> 保存最新快照
+  -> 前端以消息卡片展示</code></pre>
+
 <h1>四、数据模型设计</h1>
-<p>本节以 ER 图作为数据模型主视图，再用字段字典补充每张表的中文注释、约束和枚举取值。MVP 阶段优先覆盖国内 ETF 日报闭环所需实体，后续扩展模拟盘或实盘时再新增账户、订单、成交和风控表。</p>
+<p>当前 MVP 使用本地 JSON 文件承载数据，以下 ER 图是当前数据结构和后续数据库化的目标模型。字段都保留中文注释，枚举 Key 在本节末尾统一说明。</p>
 
-<h2>4.1 ER 图</h2>
+<h2>（一）ER 图</h2>
 <whiteboard type="svg">
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1080" viewBox="0 0 1500 1080">
-  <rect x="0" y="0" width="1500" height="1080" fill="#F7F9FC"/>
-  <text x="750" y="42" text-anchor="middle" font-size="26" font-weight="700" fill="#1F2937">ChinaQuantify MVP 数据模型 ER 图</text>
-  <text x="750" y="76" text-anchor="middle" font-size="15" fill="#64748B">核心链路：标的池 → 行情 → 指标 → 信号 / 回测 → AI 日报 → 任务日志</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980">
+  <rect width="1500" height="980" fill="#F8FAFC"/>
+  <text x="750" y="45" text-anchor="middle" font-size="28" font-weight="700" fill="#0F172A">ChinaQuantify MVP 数据模型 ER 图</text>
+  <text x="750" y="78" text-anchor="middle" font-size="15" fill="#64748B">账户资产、真实行情、关注队列、监控复盘和 AI 日报</text>
 
-  <rect x="60" y="130" width="250" height="170" rx="10" fill="#E8F2FF" stroke="#2563EB" stroke-width="2"/>
-  <rect x="60" y="130" width="250" height="42" rx="10" fill="#2563EB"/>
-  <text x="185" y="158" text-anchor="middle" font-size="17" font-weight="700" fill="#FFFFFF">market_symbols</text>
-  <text x="80" y="198" font-size="14" fill="#1F2937">标的池表</text>
-  <text x="80" y="224" font-size="13" fill="#334155">PK id</text>
-  <text x="80" y="248" font-size="13" fill="#334155">UK symbol 证券代码</text>
-  <text x="80" y="272" font-size="13" fill="#334155">market / category 枚举</text>
+  <rect x="55" y="135" width="250" height="160" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="2"/>
+  <rect x="55" y="135" width="250" height="40" rx="10" fill="#2563EB"/>
+  <text x="180" y="162" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">accounts</text>
+  <text x="75" y="202" font-size="13" fill="#334155">id 主键</text>
+  <text x="75" y="226" font-size="13" fill="#334155">cash_balance 可用余额</text>
+  <text x="75" y="250" font-size="13" fill="#334155">currency 币种</text>
+  <text x="75" y="274" font-size="13" fill="#334155">is_sample 是否样例账户</text>
 
-  <rect x="420" y="110" width="260" height="150" rx="10" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
-  <rect x="420" y="110" width="260" height="40" rx="10" fill="#475569"/>
-  <text x="550" y="137" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">market_daily_bars</text>
-  <text x="440" y="176" font-size="14" fill="#1F2937">日线行情表</text>
-  <text x="440" y="202" font-size="13" fill="#334155">FK symbol_id</text>
-  <text x="440" y="226" font-size="13" fill="#334155">trade_date / OHLCV</text>
+  <rect x="390" y="120" width="270" height="190" rx="10" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="390" y="120" width="270" height="40" rx="10" fill="#475569"/>
+  <text x="525" y="147" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">securities</text>
+  <text x="410" y="187" font-size="13" fill="#334155">symbol 股票代码</text>
+  <text x="410" y="211" font-size="13" fill="#334155">name 股票名称</text>
+  <text x="410" y="235" font-size="13" fill="#334155">market 市场枚举</text>
+  <text x="410" y="259" font-size="13" fill="#334155">industry 行业</text>
+  <text x="410" y="283" font-size="13" fill="#334155">data_source 数据源</text>
 
-  <rect x="420" y="320" width="260" height="170" rx="10" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
-  <rect x="420" y="320" width="260" height="40" rx="10" fill="#475569"/>
-  <text x="550" y="347" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">indicator_snapshots</text>
-  <text x="440" y="386" font-size="14" fill="#1F2937">指标快照表</text>
-  <text x="440" y="412" font-size="13" fill="#334155">FK symbol_id</text>
-  <text x="440" y="436" font-size="13" fill="#334155">MA / RSI / MACD</text>
-  <text x="440" y="460" font-size="13" fill="#334155">trend_state 趋势枚举</text>
+  <rect x="745" y="120" width="270" height="190" rx="10" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="745" y="120" width="270" height="40" rx="10" fill="#475569"/>
+  <text x="880" y="147" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">market_quotes</text>
+  <text x="765" y="187" font-size="13" fill="#334155">security_id 证券 ID</text>
+  <text x="765" y="211" font-size="13" fill="#334155">price 最新价</text>
+  <text x="765" y="235" font-size="13" fill="#334155">change_pct 涨跌幅</text>
+  <text x="765" y="259" font-size="13" fill="#334155">turnover_rate 换手率</text>
+  <text x="765" y="283" font-size="13" fill="#334155">synced_at 同步时间秒级</text>
 
-  <rect x="60" y="410" width="250" height="170" rx="10" fill="#FFF7ED" stroke="#F97316" stroke-width="2"/>
-  <rect x="60" y="410" width="250" height="42" rx="10" fill="#F97316"/>
-  <text x="185" y="438" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">strategy_definitions</text>
-  <text x="80" y="478" font-size="14" fill="#1F2937">策略定义表</text>
-  <text x="80" y="504" font-size="13" fill="#334155">UK strategy_code</text>
-  <text x="80" y="528" font-size="13" fill="#334155">strategy_type 策略枚举</text>
-  <text x="80" y="552" font-size="13" fill="#334155">parameters 默认参数</text>
+  <rect x="1100" y="120" width="270" height="190" rx="10" fill="#FEFCE8" stroke="#CA8A04" stroke-width="2"/>
+  <rect x="1100" y="120" width="270" height="40" rx="10" fill="#CA8A04"/>
+  <text x="1235" y="147" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">watchlist_items</text>
+  <text x="1120" y="187" font-size="13" fill="#334155">security_id 证券 ID</text>
+  <text x="1120" y="211" font-size="13" fill="#334155">source 来源枚举</text>
+  <text x="1120" y="235" font-size="13" fill="#334155">priority 关注优先级</text>
+  <text x="1120" y="259" font-size="13" fill="#334155">reason 关注理由</text>
+  <text x="1120" y="283" font-size="13" fill="#334155">created_at 加入时间</text>
 
-  <rect x="790" y="320" width="260" height="180" rx="10" fill="#FFF7ED" stroke="#F97316" stroke-width="2"/>
-  <rect x="790" y="320" width="260" height="42" rx="10" fill="#F97316"/>
-  <text x="920" y="348" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">strategy_signals</text>
-  <text x="810" y="388" font-size="14" fill="#1F2937">策略信号表</text>
-  <text x="810" y="414" font-size="13" fill="#334155">FK symbol_id</text>
-  <text x="810" y="438" font-size="13" fill="#334155">FK strategy_id</text>
-  <text x="810" y="462" font-size="13" fill="#334155">signal_type 信号枚举</text>
+  <rect x="55" y="410" width="250" height="185" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <rect x="55" y="410" width="250" height="40" rx="10" fill="#059669"/>
+  <text x="180" y="437" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">positions</text>
+  <text x="75" y="477" font-size="13" fill="#334155">account_id 账户 ID</text>
+  <text x="75" y="501" font-size="13" fill="#334155">security_id 证券 ID</text>
+  <text x="75" y="525" font-size="13" fill="#334155">quantity 当前持仓股数</text>
+  <text x="75" y="549" font-size="13" fill="#334155">market_value 当前市值</text>
+  <text x="75" y="573" font-size="13" fill="#334155">holding_profit 累计盈亏</text>
 
-  <rect x="790" y="570" width="260" height="180" rx="10" fill="#F0FDF4" stroke="#16A34A" stroke-width="2"/>
-  <rect x="790" y="570" width="260" height="42" rx="10" fill="#16A34A"/>
-  <text x="920" y="598" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">backtest_runs</text>
-  <text x="810" y="638" font-size="14" fill="#1F2937">回测任务表</text>
-  <text x="810" y="664" font-size="13" fill="#334155">FK symbol_id</text>
-  <text x="810" y="688" font-size="13" fill="#334155">FK strategy_id</text>
-  <text x="810" y="712" font-size="13" fill="#334155">run_status 运行枚举</text>
+  <rect x="390" y="410" width="270" height="185" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <rect x="390" y="410" width="270" height="40" rx="10" fill="#059669"/>
+  <text x="525" y="437" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">position_lots</text>
+  <text x="410" y="477" font-size="13" fill="#334155">position_id 持仓 ID</text>
+  <text x="410" y="501" font-size="13" fill="#334155">buy_time 买入时间秒级</text>
+  <text x="410" y="525" font-size="13" fill="#334155">quantity 买入股数</text>
+  <text x="410" y="549" font-size="13" fill="#334155">cost_price 买入单价</text>
+  <text x="410" y="573" font-size="13" fill="#334155">fee 费用</text>
 
-  <rect x="1160" y="585" width="260" height="150" rx="10" fill="#F0FDF4" stroke="#16A34A" stroke-width="2"/>
-  <rect x="1160" y="585" width="260" height="40" rx="10" fill="#16A34A"/>
-  <text x="1290" y="612" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">backtest_results</text>
-  <text x="1180" y="652" font-size="14" fill="#1F2937">回测结果表</text>
-  <text x="1180" y="678" font-size="13" fill="#334155">FK run_id</text>
-  <text x="1180" y="702" font-size="13" fill="#334155">equity / trades / positions</text>
+  <rect x="745" y="410" width="270" height="185" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <rect x="745" y="410" width="270" height="40" rx="10" fill="#059669"/>
+  <text x="880" y="437" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">cashflows</text>
+  <text x="765" y="477" font-size="13" fill="#334155">position_id 持仓 ID</text>
+  <text x="765" y="501" font-size="13" fill="#334155">trade_time 交易时间秒级</text>
+  <text x="765" y="525" font-size="13" fill="#334155">flow_type 类型枚举</text>
+  <text x="765" y="549" font-size="13" fill="#334155">amount 正负金额</text>
+  <text x="765" y="573" font-size="13" fill="#334155">calculation_text 公式代入</text>
 
-  <rect x="60" y="750" width="250" height="150" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <rect x="60" y="750" width="250" height="40" rx="10" fill="#7C3AED"/>
-  <text x="185" y="777" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">job_runs</text>
-  <text x="80" y="816" font-size="14" fill="#1F2937">任务运行日志表</text>
-  <text x="80" y="842" font-size="13" fill="#334155">job_name 任务枚举</text>
-  <text x="80" y="866" font-size="13" fill="#334155">job_status 状态枚举</text>
+  <rect x="1100" y="410" width="270" height="185" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+  <rect x="1100" y="410" width="270" height="40" rx="10" fill="#7C3AED"/>
+  <text x="1235" y="437" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">monitor_snapshots</text>
+  <text x="1120" y="477" font-size="13" fill="#334155">snapshot_time 快照时间</text>
+  <text x="1120" y="501" font-size="13" fill="#334155">market_status 市场状态</text>
+  <text x="1120" y="525" font-size="13" fill="#334155">recommendations 推荐池</text>
+  <text x="1120" y="549" font-size="13" fill="#334155">watched_stocks 关注股票</text>
+  <text x="1120" y="573" font-size="13" fill="#334155">weekly_review 周复盘</text>
 
-  <rect x="420" y="790" width="260" height="170" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <rect x="420" y="790" width="260" height="42" rx="10" fill="#7C3AED"/>
-  <text x="550" y="818" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">ai_reports</text>
-  <text x="440" y="858" font-size="14" fill="#1F2937">AI 日报表</text>
-  <text x="440" y="884" font-size="13" fill="#334155">FK job_run_id</text>
-  <text x="440" y="908" font-size="13" fill="#334155">report_type 日报枚举</text>
-  <text x="440" y="932" font-size="13" fill="#334155">model_provider 模型枚举</text>
+  <rect x="390" y="710" width="270" height="175" rx="10" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <rect x="390" y="710" width="270" height="40" rx="10" fill="#EA580C"/>
+  <text x="525" y="737" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">ai_reports</text>
+  <text x="410" y="777" font-size="13" fill="#334155">report_date 报告日期</text>
+  <text x="410" y="801" font-size="13" fill="#334155">report_type 类型枚举</text>
+  <text x="410" y="825" font-size="13" fill="#334155">summary 摘要</text>
+  <text x="410" y="849" font-size="13" fill="#334155">model_provider 模型供应商</text>
+  <text x="410" y="873" font-size="13" fill="#334155">content 正文</text>
 
-  <rect x="790" y="810" width="260" height="150" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
-  <rect x="790" y="810" width="260" height="40" rx="10" fill="#7C3AED"/>
-  <text x="920" y="837" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">ai_report_symbols</text>
-  <text x="810" y="876" font-size="14" fill="#1F2937">日报标的引用表</text>
-  <text x="810" y="902" font-size="13" fill="#334155">FK report_id</text>
-  <text x="810" y="926" font-size="13" fill="#334155">FK symbol_id / snapshot</text>
+  <rect x="745" y="710" width="270" height="175" rx="10" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+  <rect x="745" y="710" width="270" height="40" rx="10" fill="#EA580C"/>
+  <text x="880" y="737" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">job_runs</text>
+  <text x="765" y="777" font-size="13" fill="#334155">job_name 任务名称</text>
+  <text x="765" y="801" font-size="13" fill="#334155">job_status 状态枚举</text>
+  <text x="765" y="825" font-size="13" fill="#334155">started_at 开始时间</text>
+  <text x="765" y="849" font-size="13" fill="#334155">finished_at 结束时间</text>
+  <text x="765" y="873" font-size="13" fill="#334155">error_message 错误信息</text>
 
-  <polyline points="310,190 420,180" fill="none" stroke="#2563EB" stroke-width="2"/>
-  <text x="350" y="170" font-size="12" fill="#2563EB">1:N 行情</text>
-  <polyline points="310,250 420,395" fill="none" stroke="#2563EB" stroke-width="2"/>
-  <text x="330" y="340" font-size="12" fill="#2563EB">1:N 指标</text>
-  <polyline points="310,285 790,410" fill="none" stroke="#2563EB" stroke-width="2"/>
-  <text x="575" y="345" font-size="12" fill="#2563EB">1:N 信号</text>
-  <polyline points="310,300 790,650" fill="none" stroke="#2563EB" stroke-width="2"/>
-  <text x="510" y="535" font-size="12" fill="#2563EB">1:N 回测</text>
-  <polyline points="310,495 790,410" fill="none" stroke="#F97316" stroke-width="2"/>
-  <text x="525" y="435" font-size="12" fill="#F97316">策略产出信号</text>
-  <polyline points="310,560 790,650" fill="none" stroke="#F97316" stroke-width="2"/>
-  <text x="505" y="630" font-size="12" fill="#F97316">策略参与回测</text>
-  <polyline points="1050,660 1160,660" fill="none" stroke="#16A34A" stroke-width="2"/>
-  <text x="1080" y="646" font-size="12" fill="#16A34A">1:N 结果</text>
-  <polyline points="310,825 420,875" fill="none" stroke="#7C3AED" stroke-width="2"/>
-  <text x="326" y="866" font-size="12" fill="#7C3AED">任务生成</text>
-  <polyline points="680,875 790,880" fill="none" stroke="#7C3AED" stroke-width="2"/>
-  <text x="710" y="862" font-size="12" fill="#7C3AED">日报引用</text>
-  <polyline points="185,300 185,980 920,980 920,960" fill="none" stroke="#7C3AED" stroke-width="2"/>
-  <text x="500" y="1004" font-size="12" fill="#7C3AED">标的纳入日报快照</text>
+  <line x1="305" y1="215" x2="390" y2="215" stroke="#2563EB" stroke-width="2"/>
+  <text x="330" y="198" font-size="12" fill="#2563EB">持仓引用证券</text>
+  <line x1="660" y1="215" x2="745" y2="215" stroke="#64748B" stroke-width="2"/>
+  <text x="685" y="198" font-size="12" fill="#64748B">证券行情</text>
+  <line x1="1015" y1="215" x2="1100" y2="215" stroke="#CA8A04" stroke-width="2"/>
+  <text x="1030" y="198" font-size="12" fill="#CA8A04">加入关注</text>
+  <line x1="180" y1="295" x2="180" y2="410" stroke="#059669" stroke-width="2"/>
+  <text x="192" y="360" font-size="12" fill="#059669">账户持仓</text>
+  <line x1="305" y1="500" x2="390" y2="500" stroke="#059669" stroke-width="2"/>
+  <text x="322" y="484" font-size="12" fill="#059669">批次</text>
+  <line x1="660" y1="500" x2="745" y2="500" stroke="#059669" stroke-width="2"/>
+  <text x="685" y="484" font-size="12" fill="#059669">流水</text>
+  <line x1="1235" y1="310" x2="1235" y2="410" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1246" y="365" font-size="12" fill="#7C3AED">监控采集</text>
+  <line x1="1015" y1="800" x2="1100" y2="550" stroke="#7C3AED" stroke-width="2"/>
+  <text x="1060" y="690" font-size="12" fill="#7C3AED">任务产出快照</text>
+  <line x1="745" y1="800" x2="660" y2="800" stroke="#EA580C" stroke-width="2"/>
+  <text x="680" y="783" font-size="12" fill="#EA580C">任务生成日报</text>
 </svg>
 </whiteboard>
 
-<h2>4.2 表设计总览</h2>
+<h2>（二）实体字段说明</h2>
 <table>
   <thead>
     <tr>
-      <th background-color="light-gray">表名</th>
-      <th background-color="light-gray">中文名</th>
-      <th background-color="light-gray">说明</th>
-      <th background-color="light-gray">主业务关系</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>market_symbols</td><td>标的池表</td><td>保存 ETF、指数、股票等可分析标的。</td><td>一对多关联行情、指标、信号、回测和日报引用。</td></tr>
-    <tr><td>market_daily_bars</td><td>日线行情表</td><td>保存标的每日 OHLCV 和成交额。</td><td>由 market_symbols 派生。</td></tr>
-    <tr><td>indicator_snapshots</td><td>指标快照表</td><td>保存每个标的每日计算后的技术指标。</td><td>由日线行情计算得到。</td></tr>
-    <tr><td>strategy_definitions</td><td>策略定义表</td><td>保存策略编码、名称、类型和默认参数。</td><td>一对多关联策略信号和回测任务。</td></tr>
-    <tr><td>strategy_signals</td><td>策略信号表</td><td>保存某策略在某标的某日触发的研究信号。</td><td>连接标的和策略。</td></tr>
-    <tr><td>backtest_runs</td><td>回测任务表</td><td>保存一次回测运行的参数、状态和汇总指标。</td><td>连接标的、策略和回测结果。</td></tr>
-    <tr><td>backtest_results</td><td>回测结果表</td><td>保存净值曲线、回撤曲线、交易和持仓明细。</td><td>从属于 backtest_runs。</td></tr>
-    <tr><td>ai_reports</td><td>AI 日报表</td><td>保存 AI 生成的日报摘要、正文、模型信息和输入快照。</td><td>可由 job_runs 触发生成。</td></tr>
-    <tr><td>ai_report_symbols</td><td>日报标的引用表</td><td>保存日报中引用的标的状态快照。</td><td>连接 ai_reports 和 market_symbols。</td></tr>
-    <tr><td>job_runs</td><td>任务运行日志表</td><td>保存定时任务和手动任务的运行状态、参数和错误。</td><td>支撑行情同步、指标计算、日报生成等任务追踪。</td></tr>
-  </tbody>
-</table>
-
-<h2>4.3 字段字典</h2>
-<h3>4.3.1 market_symbols：标的池表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>标的主键。</td><td>系统自增。</td></tr>
-    <tr><td>symbol</td><td>varchar(32)</td><td>UK, NOT NULL</td><td>证券代码。</td><td>例如 510300、159915。</td></tr>
-    <tr><td>name</td><td>varchar(128)</td><td>NOT NULL</td><td>证券名称。</td><td>例如 沪深300ETF。</td></tr>
-    <tr><td>market</td><td>varchar(16)</td><td>NOT NULL</td><td>交易市场。</td><td>枚举：MARKET_TYPE。</td></tr>
-    <tr><td>category</td><td>varchar(32)</td><td>NOT NULL</td><td>标的类型。</td><td>枚举：SYMBOL_CATEGORY。</td></tr>
-    <tr><td>enabled</td><td>boolean</td><td>NOT NULL</td><td>是否启用。</td><td>true 启用；false 停用。</td></tr>
-    <tr><td>remark</td><td>text</td><td>NULL</td><td>标的备注。</td><td>用于记录跟踪理由或数据注意事项。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-    <tr><td>updated_at</td><td>timestamp</td><td>NOT NULL</td><td>更新时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-
-<h3>4.3.2 market_daily_bars：日线行情表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>行情记录主键。</td><td>系统自增。</td></tr>
-    <tr><td>symbol_id</td><td>bigint</td><td>FK, NOT NULL</td><td>标的 ID。</td><td>关联 market_symbols.id。</td></tr>
-    <tr><td>trade_date</td><td>date</td><td>NOT NULL</td><td>交易日期。</td><td>与 symbol_id 组成唯一约束。</td></tr>
-    <tr><td>open</td><td>numeric</td><td>NOT NULL</td><td>开盘价。</td><td>复权口径由数据源配置决定。</td></tr>
-    <tr><td>high</td><td>numeric</td><td>NOT NULL</td><td>最高价。</td><td>日内最高价。</td></tr>
-    <tr><td>low</td><td>numeric</td><td>NOT NULL</td><td>最低价。</td><td>日内最低价。</td></tr>
-    <tr><td>close</td><td>numeric</td><td>NOT NULL</td><td>收盘价。</td><td>指标和回测主要使用字段。</td></tr>
-    <tr><td>volume</td><td>numeric</td><td>NULL</td><td>成交量。</td><td>不同数据源单位可能不同，入库前统一。</td></tr>
-    <tr><td>amount</td><td>numeric</td><td>NULL</td><td>成交额。</td><td>用于流动性观察。</td></tr>
-    <tr><td>source</td><td>varchar(32)</td><td>NOT NULL</td><td>数据来源。</td><td>枚举：DATA_SOURCE。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-<p><b>唯一约束：</b>symbol_id + trade_date。</p>
-
-<h3>4.3.3 indicator_snapshots：指标快照表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>指标快照主键。</td><td>系统自增。</td></tr>
-    <tr><td>symbol_id</td><td>bigint</td><td>FK, NOT NULL</td><td>标的 ID。</td><td>关联 market_symbols.id。</td></tr>
-    <tr><td>trade_date</td><td>date</td><td>NOT NULL</td><td>交易日期。</td><td>与 symbol_id 组成唯一约束。</td></tr>
-    <tr><td>ma5</td><td>numeric</td><td>NULL</td><td>5 日均线。</td><td>样本不足时为空。</td></tr>
-    <tr><td>ma20</td><td>numeric</td><td>NULL</td><td>20 日均线。</td><td>短中期趋势观察。</td></tr>
-    <tr><td>ma60</td><td>numeric</td><td>NULL</td><td>60 日均线。</td><td>中期趋势观察。</td></tr>
-    <tr><td>rsi14</td><td>numeric</td><td>NULL</td><td>14 日 RSI。</td><td>超买超卖观察。</td></tr>
-    <tr><td>macd</td><td>numeric</td><td>NULL</td><td>MACD 差值。</td><td>EMA12 减 EMA26。</td></tr>
-    <tr><td>macd_signal</td><td>numeric</td><td>NULL</td><td>MACD 信号线。</td><td>MACD 的 EMA9。</td></tr>
-    <tr><td>macd_hist</td><td>numeric</td><td>NULL</td><td>MACD 柱。</td><td>macd 减 macd_signal。</td></tr>
-    <tr><td>trend_state</td><td>varchar(32)</td><td>NOT NULL</td><td>趋势状态。</td><td>枚举：TREND_STATE。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-<p><b>唯一约束：</b>symbol_id + trade_date。</p>
-
-<h3>4.3.4 strategy_definitions：策略定义表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>策略主键。</td><td>系统自增。</td></tr>
-    <tr><td>strategy_code</td><td>varchar(64)</td><td>UK, NOT NULL</td><td>策略编码。</td><td>例如 ma_rsi_v1。</td></tr>
-    <tr><td>strategy_name</td><td>varchar(128)</td><td>NOT NULL</td><td>策略名称。</td><td>用于前端展示。</td></tr>
-    <tr><td>strategy_type</td><td>varchar(32)</td><td>NOT NULL</td><td>策略类型。</td><td>枚举：STRATEGY_TYPE。</td></tr>
-    <tr><td>parameters</td><td>jsonb</td><td>NOT NULL</td><td>默认参数。</td><td>例如均线窗口、RSI 阈值。</td></tr>
-    <tr><td>enabled</td><td>boolean</td><td>NOT NULL</td><td>是否启用。</td><td>true 启用；false 停用。</td></tr>
-    <tr><td>description</td><td>text</td><td>NULL</td><td>策略说明。</td><td>说明策略逻辑和适用边界。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-    <tr><td>updated_at</td><td>timestamp</td><td>NOT NULL</td><td>更新时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-
-<h3>4.3.5 strategy_signals：策略信号表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>信号主键。</td><td>系统自增。</td></tr>
-    <tr><td>symbol_id</td><td>bigint</td><td>FK, NOT NULL</td><td>标的 ID。</td><td>关联 market_symbols.id。</td></tr>
-    <tr><td>strategy_id</td><td>bigint</td><td>FK, NOT NULL</td><td>策略 ID。</td><td>关联 strategy_definitions.id。</td></tr>
-    <tr><td>trade_date</td><td>date</td><td>NOT NULL</td><td>交易日期。</td><td>信号所属日期。</td></tr>
-    <tr><td>signal_type</td><td>varchar(32)</td><td>NOT NULL</td><td>信号类型。</td><td>枚举：SIGNAL_TYPE。</td></tr>
-    <tr><td>signal_score</td><td>numeric</td><td>NULL</td><td>信号分值。</td><td>0 到 100，越高表示关注度越高。</td></tr>
-    <tr><td>reason</td><td>text</td><td>NOT NULL</td><td>触发原因。</td><td>中文解释，前端直接展示。</td></tr>
-    <tr><td>payload</td><td>jsonb</td><td>NOT NULL</td><td>规则明细。</td><td>保存指标值、阈值、命中规则。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-<p><b>唯一约束：</b>symbol_id + strategy_id + trade_date。</p>
-
-<h3>4.3.6 backtest_runs：回测任务表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>回测任务主键。</td><td>系统自增。</td></tr>
-    <tr><td>symbol_id</td><td>bigint</td><td>FK, NOT NULL</td><td>标的 ID。</td><td>关联 market_symbols.id。</td></tr>
-    <tr><td>strategy_id</td><td>bigint</td><td>FK, NOT NULL</td><td>策略 ID。</td><td>关联 strategy_definitions.id。</td></tr>
-    <tr><td>start_date</td><td>date</td><td>NOT NULL</td><td>回测开始日期。</td><td>包含该日。</td></tr>
-    <tr><td>end_date</td><td>date</td><td>NOT NULL</td><td>回测结束日期。</td><td>包含该日。</td></tr>
-    <tr><td>initial_cash</td><td>numeric</td><td>NOT NULL</td><td>初始资金。</td><td>默认 100000。</td></tr>
-    <tr><td>run_status</td><td>varchar(32)</td><td>NOT NULL</td><td>运行状态。</td><td>枚举：RUN_STATUS。</td></tr>
-    <tr><td>parameters</td><td>jsonb</td><td>NOT NULL</td><td>回测参数。</td><td>手续费、滑点、执行价、仓位模式等。</td></tr>
-    <tr><td>metrics</td><td>jsonb</td><td>NULL</td><td>汇总指标。</td><td>累计收益、最大回撤、胜率等。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>任务创建时间。</td></tr>
-    <tr><td>finished_at</td><td>timestamp</td><td>NULL</td><td>完成时间。</td><td>失败或成功后写入。</td></tr>
-  </tbody>
-</table>
-
-<h3>4.3.7 backtest_results：回测结果表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>回测结果主键。</td><td>系统自增。</td></tr>
-    <tr><td>run_id</td><td>bigint</td><td>FK, NOT NULL</td><td>回测任务 ID。</td><td>关联 backtest_runs.id。</td></tr>
-    <tr><td>equity_curve</td><td>jsonb</td><td>NOT NULL</td><td>净值曲线。</td><td>按日期保存资产净值。</td></tr>
-    <tr><td>drawdown_curve</td><td>jsonb</td><td>NOT NULL</td><td>回撤曲线。</td><td>按日期保存回撤比例。</td></tr>
-    <tr><td>trades</td><td>jsonb</td><td>NOT NULL</td><td>交易明细。</td><td>买卖日期、价格、数量、费用。</td></tr>
-    <tr><td>positions</td><td>jsonb</td><td>NULL</td><td>持仓明细。</td><td>按日期保存仓位状态。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-
-<h3>4.3.8 ai_reports：AI 日报表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>日报主键。</td><td>系统自增。</td></tr>
-    <tr><td>job_run_id</td><td>bigint</td><td>FK, NULL</td><td>生成任务 ID。</td><td>关联 job_runs.id，手动草稿可为空。</td></tr>
-    <tr><td>report_date</td><td>date</td><td>NOT NULL</td><td>日报日期。</td><td>与 report_type 组成唯一约束。</td></tr>
-    <tr><td>report_type</td><td>varchar(32)</td><td>NOT NULL</td><td>日报类型。</td><td>枚举：REPORT_TYPE。</td></tr>
-    <tr><td>title</td><td>varchar(256)</td><td>NOT NULL</td><td>日报标题。</td><td>例如 2026-07-04 国内 ETF 量化日报。</td></tr>
-    <tr><td>summary</td><td>text</td><td>NULL</td><td>摘要。</td><td>用于列表页展示。</td></tr>
-    <tr><td>content</td><td>text</td><td>NOT NULL</td><td>日报正文。</td><td>Markdown 或 HTML 内容。</td></tr>
-    <tr><td>model_provider</td><td>varchar(32)</td><td>NOT NULL</td><td>模型供应商。</td><td>枚举：MODEL_PROVIDER。</td></tr>
-    <tr><td>model_name</td><td>varchar(64)</td><td>NOT NULL</td><td>模型名称。</td><td>例如 gpt-5、gemini-2.5-pro。</td></tr>
-    <tr><td>input_snapshot</td><td>jsonb</td><td>NOT NULL</td><td>输入快照。</td><td>保存传给模型的结构化摘要。</td></tr>
-    <tr><td>created_at</td><td>timestamp</td><td>NOT NULL</td><td>创建时间。</td><td>服务端写入。</td></tr>
-  </tbody>
-</table>
-<p><b>唯一约束：</b>report_date + report_type。</p>
-
-<h3>4.3.9 ai_report_symbols：日报标的引用表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>日报标的引用主键。</td><td>系统自增。</td></tr>
-    <tr><td>report_id</td><td>bigint</td><td>FK, NOT NULL</td><td>日报 ID。</td><td>关联 ai_reports.id。</td></tr>
-    <tr><td>symbol_id</td><td>bigint</td><td>FK, NOT NULL</td><td>标的 ID。</td><td>关联 market_symbols.id。</td></tr>
-    <tr><td>signal_type</td><td>varchar(32)</td><td>NULL</td><td>日报使用的当日信号。</td><td>枚举：SIGNAL_TYPE。</td></tr>
-    <tr><td>trend_state</td><td>varchar(32)</td><td>NULL</td><td>日报使用的趋势状态。</td><td>枚举：TREND_STATE。</td></tr>
-    <tr><td>snapshot</td><td>jsonb</td><td>NOT NULL</td><td>标的数据快照。</td><td>保存价格、指标、信号、回测摘要。</td></tr>
-  </tbody>
-</table>
-<p><b>唯一约束：</b>report_id + symbol_id。</p>
-
-<h3>4.3.10 job_runs：任务运行日志表</h3>
-<table>
-  <thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">类型</th><th background-color="light-gray">约束</th><th background-color="light-gray">中文注释</th><th background-color="light-gray">枚举 / 备注</th></tr></thead>
-  <tbody>
-    <tr><td>id</td><td>bigint</td><td>PK</td><td>任务运行主键。</td><td>系统自增。</td></tr>
-    <tr><td>job_name</td><td>varchar(64)</td><td>NOT NULL</td><td>任务名称。</td><td>枚举：JOB_NAME。</td></tr>
-    <tr><td>job_status</td><td>varchar(32)</td><td>NOT NULL</td><td>任务状态。</td><td>枚举：RUN_STATUS。</td></tr>
-    <tr><td>params</td><td>jsonb</td><td>NULL</td><td>运行参数。</td><td>例如 symbol、date_range、force_refresh。</td></tr>
-    <tr><td>error_message</td><td>text</td><td>NULL</td><td>错误信息。</td><td>失败时写入，前端展示摘要。</td></tr>
-    <tr><td>started_at</td><td>timestamp</td><td>NOT NULL</td><td>开始时间。</td><td>任务启动时写入。</td></tr>
-    <tr><td>finished_at</td><td>timestamp</td><td>NULL</td><td>结束时间。</td><td>成功或失败后写入。</td></tr>
-    <tr><td>duration_ms</td><td>bigint</td><td>NULL</td><td>耗时毫秒。</td><td>用于任务性能观察。</td></tr>
-  </tbody>
-</table>
-
-<h2>4.4 枚举字典</h2>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">枚举名</th>
-      <th background-color="light-gray">枚举 Key</th>
-      <th background-color="light-gray">中文注释</th>
-      <th background-color="light-gray">使用字段</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>MARKET_TYPE</td><td>SH</td><td>上海证券交易所。</td><td>market_symbols.market</td></tr>
-    <tr><td>MARKET_TYPE</td><td>SZ</td><td>深圳证券交易所。</td><td>market_symbols.market</td></tr>
-    <tr><td>MARKET_TYPE</td><td>BJ</td><td>北京证券交易所。</td><td>market_symbols.market</td></tr>
-    <tr><td>SYMBOL_CATEGORY</td><td>ETF</td><td>交易型开放式指数基金，MVP 主分析对象。</td><td>market_symbols.category</td></tr>
-    <tr><td>SYMBOL_CATEGORY</td><td>INDEX</td><td>指数，仅用于参考和对照。</td><td>market_symbols.category</td></tr>
-    <tr><td>SYMBOL_CATEGORY</td><td>STOCK</td><td>股票，MVP 暂不作为主分析对象。</td><td>market_symbols.category</td></tr>
-    <tr><td>DATA_SOURCE</td><td>AKSHARE</td><td>AkShare 数据源。</td><td>market_daily_bars.source</td></tr>
-    <tr><td>DATA_SOURCE</td><td>TUSHARE</td><td>Tushare 数据源，后续可作为补充。</td><td>market_daily_bars.source</td></tr>
-    <tr><td>TREND_STATE</td><td>STRONG_UP</td><td>强上涨趋势，价格和均线结构明显偏多。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>TREND_STATE</td><td>UP</td><td>上涨趋势，但强度一般。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>TREND_STATE</td><td>SIDEWAYS</td><td>震荡状态，方向不明确。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>TREND_STATE</td><td>DOWN</td><td>下跌趋势。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>TREND_STATE</td><td>STRONG_DOWN</td><td>强下跌趋势，价格和均线结构明显偏空。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>TREND_STATE</td><td>UNKNOWN</td><td>样本不足或数据异常，暂无法判断。</td><td>indicator_snapshots.trend_state、ai_report_symbols.trend_state</td></tr>
-    <tr><td>STRATEGY_TYPE</td><td>TREND</td><td>趋势类策略。</td><td>strategy_definitions.strategy_type</td></tr>
-    <tr><td>STRATEGY_TYPE</td><td>MEAN_REVERSION</td><td>均值回归类策略。</td><td>strategy_definitions.strategy_type</td></tr>
-    <tr><td>STRATEGY_TYPE</td><td>ROTATION</td><td>轮动类策略。</td><td>strategy_definitions.strategy_type</td></tr>
-    <tr><td>SIGNAL_TYPE</td><td>OBSERVE</td><td>观察，无明显操作倾向。</td><td>strategy_signals.signal_type、ai_report_symbols.signal_type</td></tr>
-    <tr><td>SIGNAL_TYPE</td><td>WATCH</td><td>可关注，出现积极变化但仍需确认。</td><td>strategy_signals.signal_type、ai_report_symbols.signal_type</td></tr>
-    <tr><td>SIGNAL_TYPE</td><td>CAUTION</td><td>谨慎，趋势或风险指标出现不利变化。</td><td>strategy_signals.signal_type、ai_report_symbols.signal_type</td></tr>
-    <tr><td>SIGNAL_TYPE</td><td>RISK</td><td>风险升高，需要重点留意回撤或趋势恶化。</td><td>strategy_signals.signal_type、ai_report_symbols.signal_type</td></tr>
-    <tr><td>RUN_STATUS</td><td>PENDING</td><td>等待执行。</td><td>backtest_runs.run_status、job_runs.job_status</td></tr>
-    <tr><td>RUN_STATUS</td><td>RUNNING</td><td>执行中。</td><td>backtest_runs.run_status、job_runs.job_status</td></tr>
-    <tr><td>RUN_STATUS</td><td>SUCCESS</td><td>执行成功。</td><td>backtest_runs.run_status、job_runs.job_status</td></tr>
-    <tr><td>RUN_STATUS</td><td>FAILED</td><td>执行失败。</td><td>backtest_runs.run_status、job_runs.job_status</td></tr>
-    <tr><td>REPORT_TYPE</td><td>DAILY_ETF</td><td>国内 ETF 每日量化日报。</td><td>ai_reports.report_type</td></tr>
-    <tr><td>REPORT_TYPE</td><td>MANUAL_RESEARCH</td><td>手动生成的专题研究报告。</td><td>ai_reports.report_type</td></tr>
-    <tr><td>MODEL_PROVIDER</td><td>OPENAI</td><td>OpenAI 模型服务。</td><td>ai_reports.model_provider</td></tr>
-    <tr><td>MODEL_PROVIDER</td><td>GEMINI</td><td>Google Gemini 模型服务。</td><td>ai_reports.model_provider</td></tr>
-    <tr><td>MODEL_PROVIDER</td><td>LOCAL</td><td>本地模型或兼容接口。</td><td>ai_reports.model_provider</td></tr>
-    <tr><td>JOB_NAME</td><td>MARKET_SYNC</td><td>行情同步任务。</td><td>job_runs.job_name</td></tr>
-    <tr><td>JOB_NAME</td><td>INDICATOR_CALC</td><td>指标计算任务。</td><td>job_runs.job_name</td></tr>
-    <tr><td>JOB_NAME</td><td>SIGNAL_GENERATE</td><td>策略信号生成任务。</td><td>job_runs.job_name</td></tr>
-    <tr><td>JOB_NAME</td><td>BACKTEST_RUN</td><td>回测执行任务。</td><td>job_runs.job_name</td></tr>
-    <tr><td>JOB_NAME</td><td>AI_REPORT_GENERATE</td><td>AI 日报生成任务。</td><td>job_runs.job_name</td></tr>
-  </tbody>
-</table>
-
-<h1>五、行情同步设计</h1>
-<p>行情同步服务负责读取启用的标的池，调用 AkShare 获取历史日线数据，清洗字段后 upsert 到 market_daily_bars。同步逻辑必须幂等，同一个标的和日期重复运行不会产生重复数据。</p>
-<pre lang="text" caption="行情同步流程"><code>load enabled symbols
-  -> for each symbol
-  -> fetch akshare daily bars
-  -> normalize columns
-  -> validate required fields
-  -> upsert by symbol_id + trade_date
-  -> write job log</code></pre>
-<p>字段标准化时统一使用 trade_date、open、high、low、close、volume、amount。遇到缺失价格、非交易日空数据或数据源异常时，记录任务日志并继续处理其他标的。</p>
-
-<h1>六、指标计算设计</h1>
-<p>指标计算输入为某一标的的历史 K 线 DataFrame，输出为最新日期或指定日期区间的指标快照。MVP 指标全部用 Pandas / NumPy 实现。</p>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">指标</th>
-      <th background-color="light-gray">计算方式</th>
-      <th background-color="light-gray">用途</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>MA</td><td>close rolling mean</td><td>趋势判断。</td></tr>
-    <tr><td>EMA</td><td>close exponential weighted mean</td><td>MACD 计算。</td></tr>
-    <tr><td>MACD</td><td>EMA12 - EMA26，signal 为 EMA9</td><td>趋势动能。</td></tr>
-    <tr><td>RSI14</td><td>平均上涨 / 平均下跌强弱比</td><td>超买超卖观察。</td></tr>
-    <tr><td>Volume MA</td><td>volume rolling mean</td><td>成交量确认。</td></tr>
-  </tbody>
-</table>
-<p>趋势状态建议分为 strong_up、up、sideways、down、strong_down。分类规则由 MA20、MA60、价格相对均线位置、MACD 柱方向共同决定。</p>
-
-<h1>七、策略信号设计</h1>
-<p>MVP 策略采用规则引擎函数实现，每个策略输入 K 线和指标 DataFrame，输出标准化 signal 对象。signal_type 不直接使用 buy / sell，改用研究语义。</p>
-<pre lang="json" caption="信号对象"><code>{
-  "strategy_code": "ma_rsi_v1",
-  "symbol": "510300",
-  "trade_date": "2026-07-03",
-  "signal_type": "watch",
-  "signal_score": 72,
-  "reason": "价格站上 MA20，RSI 处于中性偏强区间，MACD 柱转正。",
-  "payload": {
-    "close": 4.123,
-    "ma20": 4.010,
-    "ma60": 3.920,
-    "rsi14": 58.2
-  }
-}</code></pre>
-
-<h1>八、轻量回测设计</h1>
-<p>回测引擎第一版只支持日线级单标的策略。核心对象包括 BacktestConfig、BarSeries、SignalSeries、Position、Trade 和 EquityCurve。回测采用收盘后生成信号、下一交易日开盘或收盘执行的简化假设，具体执行价在配置中指定。</p>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">参数</th>
-      <th background-color="light-gray">说明</th>
-      <th background-color="light-gray">默认值</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>initial_cash</td><td>初始资金。</td><td>100000</td></tr>
-    <tr><td>fee_rate</td><td>手续费率。</td><td>0.0003</td></tr>
-    <tr><td>slippage_rate</td><td>滑点率。</td><td>0.0005</td></tr>
-    <tr><td>position_mode</td><td>仓位模式。</td><td>full</td></tr>
-    <tr><td>execution_price</td><td>执行价格。</td><td>close</td></tr>
-  </tbody>
-</table>
-<p>回测输出包括累计收益、年化收益、最大回撤、夏普比率、胜率、交易次数、盈亏比、净值曲线和交易明细。夏普比率在数据不足时允许为空。</p>
-
-<h1>九、AI 日报设计</h1>
-<p>日报生成分为数据准备、提示词组装、模型调用、结果保存四步。模型输入必须是压缩后的结构化摘要，不直接传完整数据库记录。</p>
-<pre lang="text" caption="日报生成流程"><code>collect market overview
-  -> collect indicators and signals
-  -> collect latest backtest summary
-  -> build prompt with fixed template
-  -> call AI provider
-  -> validate output
-  -> save ai_reports</code></pre>
-<p>提示词模板需要固定输出结构：市场概况、ETF 状态、策略信号、风险提示、次日观察、免责声明。AI 生成失败时，系统应保存失败日志，并允许用户手动重试。</p>
-
-<h1>十、API 设计</h1>
-<h2>10.1 系统接口</h2>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">方法</th>
-      <th background-color="light-gray">路径</th>
-      <th background-color="light-gray">说明</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>GET</td><td>/api/v1/system/health</td><td>健康检查。</td></tr>
-    <tr><td>GET</td><td>/api/v1/system/version</td><td>版本信息。</td></tr>
-  </tbody>
-</table>
-
-<h2>10.2 行情接口</h2>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">方法</th>
-      <th background-color="light-gray">路径</th>
-      <th background-color="light-gray">说明</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>GET</td><td>/api/v1/market/symbols</td><td>查询标的池。</td></tr>
-    <tr><td>POST</td><td>/api/v1/market/symbols</td><td>新增标的。</td></tr>
-    <tr><td>PUT</td><td>/api/v1/market/symbols/{id}</td><td>更新标的。</td></tr>
-    <tr><td>GET</td><td>/api/v1/market/bars</td><td>查询 K 线。</td></tr>
-    <tr><td>POST</td><td>/api/v1/market/sync</td><td>手动触发行情同步。</td></tr>
-  </tbody>
-</table>
-
-<h2>10.3 指标、信号和回测接口</h2>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">方法</th>
-      <th background-color="light-gray">路径</th>
-      <th background-color="light-gray">说明</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>GET</td><td>/api/v1/indicators/latest</td><td>查询最新指标快照。</td></tr>
-    <tr><td>POST</td><td>/api/v1/indicators/calculate</td><td>手动触发指标计算。</td></tr>
-    <tr><td>GET</td><td>/api/v1/strategies/signals</td><td>查询策略信号。</td></tr>
-    <tr><td>POST</td><td>/api/v1/backtests/run</td><td>启动回测。</td></tr>
-    <tr><td>GET</td><td>/api/v1/backtests/{id}</td><td>查询回测结果。</td></tr>
-  </tbody>
-</table>
-
-<h2>10.4 日报和任务接口</h2>
-<table>
-  <thead>
-    <tr>
-      <th background-color="light-gray">方法</th>
-      <th background-color="light-gray">路径</th>
-      <th background-color="light-gray">说明</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>GET</td><td>/api/v1/reports</td><td>日报列表。</td></tr>
-    <tr><td>GET</td><td>/api/v1/reports/{id}</td><td>日报详情。</td></tr>
-    <tr><td>POST</td><td>/api/v1/reports/generate</td><td>手动生成日报。</td></tr>
-    <tr><td>GET</td><td>/api/v1/jobs</td><td>任务列表。</td></tr>
-    <tr><td>GET</td><td>/api/v1/jobs/{id}</td><td>任务详情和日志。</td></tr>
-  </tbody>
-</table>
-
-<h1>十一、前端页面设计</h1>
-<p><b>Dashboard。</b>展示市场概览、今日信号数量、趋势分布、最新日报摘要和最近任务状态。</p>
-<p><b>Market。</b>展示 ETF 行情表格，支持筛选、排序和跳转到 K 线详情。详情中展示收盘价、均线、MACD、RSI 和成交量图。</p>
-<p><b>Strategy。</b>展示策略列表、策略参数和当前信号。每个信号必须显示触发原因和指标值。</p>
-<p><b>Backtest。</b>展示回测参数表单、收益曲线、回撤曲线、指标统计和交易记录。</p>
-<p><b>Report。</b>展示 AI 日报列表和详情。详情页包括结构化章节和免责声明。</p>
-<p><b>Settings。</b>展示数据源、AI Provider、任务调度、通知方式和标的池配置。</p>
-
-<h1>十二、配置设计</h1>
-<pre lang="text" caption="后端环境变量示例"><code>APP_ENV=development
-DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/china_quantify
-REDIS_URL=redis://localhost:6379/0
-OPENAI_API_KEY=
-GEMINI_API_KEY=
-MARKET_DATA_PROVIDER=akshare
-SCHEDULER_ENABLED=true</code></pre>
-<p>本地配置文件不提交 Git。仓库只保留 .env.example，用于说明必要字段。</p>
-
-<h1>十三、错误处理与日志</h1>
-<p>后端所有接口返回统一错误结构，包含 request_id、错误码和用户可读信息。内部异常需要写入日志，但不能把 API Key、模型完整请求或敏感配置输出到日志。</p>
-<p>任务日志需要记录 job_name、status、started_at、finished_at、duration_ms、params、error_message。前端任务页面通过这些字段展示最近运行情况。</p>
-
-<h1>十四、测试策略</h1>
-<table>
-  <thead>
-    <tr>
+      <th background-color="light-gray">实体</th>
+      <th background-color="light-gray">字段</th>
       <th background-color="light-gray">类型</th>
-      <th background-color="light-gray">范围</th>
-      <th background-color="light-gray">优先级</th>
+      <th background-color="light-gray">中文注释</th>
+      <th background-color="light-gray">约束 / 备注</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>单元测试</td><td>指标计算、策略信号、回测引擎。</td><td>高</td></tr>
-    <tr><td>接口测试</td><td>FastAPI 核心接口。</td><td>中</td></tr>
-    <tr><td>组件测试</td><td>前端核心图表和表格。</td><td>中</td></tr>
-    <tr><td>手工验证</td><td>日报生成、飞书/邮件通知。</td><td>中</td></tr>
+    <tr><td>accounts</td><td>cash_balance</td><td>decimal</td><td>当前可用现金余额。</td><td>默认 CNY。</td></tr>
+    <tr><td>accounts</td><td>is_sample</td><td>boolean</td><td>是否样例账户。</td><td>MVP 默认 true，页面展示提醒。</td></tr>
+    <tr><td>securities</td><td>symbol</td><td>string</td><td>股票或 ETF 代码。</td><td>唯一，例如 600519。</td></tr>
+    <tr><td>securities</td><td>industry</td><td>string</td><td>所属行业。</td><td>用于股票列表筛选。</td></tr>
+    <tr><td>market_quotes</td><td>synced_at</td><td>datetime</td><td>行情同步时间。</td><td>精确到时分秒，时区 Asia/Shanghai。</td></tr>
+    <tr><td>watchlist_items</td><td>source</td><td>enum</td><td>关注来源。</td><td>枚举 WATCH_SOURCE。</td></tr>
+    <tr><td>positions</td><td>quantity</td><td>decimal</td><td>当前总持仓股数。</td><td>由持仓批次汇总。</td></tr>
+    <tr><td>positions</td><td>holding_profit</td><td>decimal</td><td>当前累计盈亏。</td><td>当前市值加真实现金流计算。</td></tr>
+    <tr><td>position_lots</td><td>buy_time</td><td>datetime</td><td>买入时间。</td><td>精确到时分秒，流水倒序使用。</td></tr>
+    <tr><td>position_lots</td><td>cost_price</td><td>decimal</td><td>买入单价。</td><td>用于计算买入成本。</td></tr>
+    <tr><td>cashflows</td><td>flow_type</td><td>enum</td><td>交易流水类型。</td><td>枚举 CASHFLOW_TYPE。</td></tr>
+    <tr><td>cashflows</td><td>amount</td><td>decimal</td><td>本笔流水金额。</td><td>收入为正，支出为负。</td></tr>
+    <tr><td>cashflows</td><td>calculation_text</td><td>string</td><td>公式代入文本。</td><td>前端交易行展示。</td></tr>
+    <tr><td>monitor_snapshots</td><td>recommendations</td><td>json</td><td>系统推荐关注股票。</td><td>包含建议动作、仓位、风险。</td></tr>
+    <tr><td>monitor_snapshots</td><td>watched_stocks</td><td>json</td><td>用户关注股票快照。</td><td>15 分钟采集结果。</td></tr>
+    <tr><td>ai_reports</td><td>report_type</td><td>enum</td><td>报告类型。</td><td>枚举 REPORT_TYPE。</td></tr>
+    <tr><td>job_runs</td><td>job_status</td><td>enum</td><td>任务运行状态。</td><td>枚举 JOB_STATUS。</td></tr>
   </tbody>
 </table>
 
-<h1>十五、开发顺序</h1>
-<ol>
-  <li seq="auto">初始化前端和后端工程骨架。</li>
-  <li seq="auto">实现后端健康检查、配置和数据库连接。</li>
-  <li seq="auto">实现标的池和行情同步。</li>
-  <li seq="auto">实现前端布局、路由和行情页面。</li>
-  <li seq="auto">实现指标计算和信号生成。</li>
-  <li seq="auto">实现回测引擎和回测页面。</li>
-  <li seq="auto">实现 AI 日报生成和日报页面。</li>
-  <li seq="auto">补充任务调度、日志、错误处理和基础测试。</li>
-</ol>
+<h2>（三）枚举 Key 与中文注释</h2>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">枚举</th>
+      <th background-color="light-gray">Key</th>
+      <th background-color="light-gray">中文注释</th>
+      <th background-color="light-gray">使用位置</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>MARKET_TYPE</td><td>SH</td><td>上海证券交易所。</td><td>securities.market</td></tr>
+    <tr><td>MARKET_TYPE</td><td>SZ</td><td>深圳证券交易所。</td><td>securities.market</td></tr>
+    <tr><td>MARKET_TYPE</td><td>BJ</td><td>北京证券交易所。</td><td>securities.market</td></tr>
+    <tr><td>SECURITY_TYPE</td><td>STOCK</td><td>A 股个股。</td><td>securities.security_type</td></tr>
+    <tr><td>SECURITY_TYPE</td><td>ETF</td><td>交易型开放式指数基金。</td><td>securities.security_type</td></tr>
+    <tr><td>WATCH_SOURCE</td><td>USER</td><td>用户主动加入关注。</td><td>watchlist_items.source</td></tr>
+    <tr><td>WATCH_SOURCE</td><td>SYSTEM_RECOMMEND</td><td>系统推荐后加入关注。</td><td>watchlist_items.source</td></tr>
+    <tr><td>CASHFLOW_TYPE</td><td>BUY</td><td>买入，金额为负数，含买入费用。</td><td>cashflows.flow_type</td></tr>
+    <tr><td>CASHFLOW_TYPE</td><td>SELL</td><td>卖出，金额为正数，扣除卖出费用。</td><td>cashflows.flow_type</td></tr>
+    <tr><td>CASHFLOW_TYPE</td><td>DIVIDEND</td><td>分红入账，金额为正数。</td><td>cashflows.flow_type</td></tr>
+    <tr><td>CASHFLOW_TYPE</td><td>FEE</td><td>独立费用流水，金额为负数；MVP 优先合并进交易。</td><td>cashflows.flow_type</td></tr>
+    <tr><td>CASHFLOW_TYPE</td><td>ADJUST</td><td>人工资金调整，用于修正历史数据。</td><td>cashflows.flow_type</td></tr>
+    <tr><td>MONITOR_TONE</td><td>positive</td><td>偏积极，可继续重点观察。</td><td>monitor_snapshots</td></tr>
+    <tr><td>MONITOR_TONE</td><td>neutral</td><td>中性，等待确认。</td><td>monitor_snapshots</td></tr>
+    <tr><td>MONITOR_TONE</td><td>risk</td><td>风险升高，降低优先级。</td><td>monitor_snapshots</td></tr>
+    <tr><td>ACTION_TYPE</td><td>trial_buy</td><td>建议小仓位试买。</td><td>推荐卡片</td></tr>
+    <tr><td>ACTION_TYPE</td><td>watch</td><td>继续观察，不急着买。</td><td>推荐卡片</td></tr>
+    <tr><td>ACTION_TYPE</td><td>reduce</td><td>已有持仓可考虑分批减仓。</td><td>推荐卡片</td></tr>
+    <tr><td>ACTION_TYPE</td><td>avoid</td><td>暂时回避。</td><td>推荐卡片</td></tr>
+    <tr><td>REPORT_TYPE</td><td>DAILY</td><td>每日总结。</td><td>ai_reports.report_type</td></tr>
+    <tr><td>REPORT_TYPE</td><td>WEEKLY</td><td>每周复盘。</td><td>ai_reports.report_type</td></tr>
+    <tr><td>MODEL_PROVIDER</td><td>deepseek</td><td>DeepSeek 模型。</td><td>ai_reports.model_provider</td></tr>
+    <tr><td>MODEL_PROVIDER</td><td>doubao</td><td>火山方舟豆包模型。</td><td>ai_reports.model_provider</td></tr>
+    <tr><td>MODEL_PROVIDER</td><td>openai</td><td>OpenAI 模型，当前作为兜底。</td><td>ai_reports.model_provider</td></tr>
+    <tr><td>JOB_STATUS</td><td>success</td><td>任务执行成功。</td><td>job_runs.job_status</td></tr>
+    <tr><td>JOB_STATUS</td><td>failed</td><td>任务执行失败。</td><td>job_runs.job_status</td></tr>
+    <tr><td>JOB_STATUS</td><td>running</td><td>任务执行中。</td><td>job_runs.job_status</td></tr>
+  </tbody>
+</table>
 
-<h1>十六、开放问题</h1>
-<checkbox done="false">是否需要在 MVP 阶段启用 Tushare 作为 AkShare 兜底数据源。</checkbox>
-<checkbox done="false">AI Provider 第一版优先 OpenAI、Gemini，还是先做本地可替换接口。</checkbox>
-<checkbox done="false">日报通知第一版是否需要企业微信，还是先仅在系统内查看。</checkbox>
-<checkbox done="false">回测第一版是否只支持单标的，还是同时支持 ETF 轮动。</checkbox>
+<h1>五、资金流水计算设计</h1>
+<p>资金流水是总览和持仓详情的核心。系统只在列表中展示真实交易流水，当前市值不作为“现在价值”流水插入列表，避免用户看到重复信息。</p>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">项目</th>
+      <th background-color="light-gray">公式</th>
+      <th background-color="light-gray">说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>买入支出</td><td>买入单价 × 买入股数 + 收费 = 本笔支出</td><td>金额取负数，例如 -¥59,905.00。</td></tr>
+    <tr><td>卖出收入</td><td>卖出单价 × 卖出股数 - 收费 = 本笔收入</td><td>金额取正数。</td></tr>
+    <tr><td>分红收入</td><td>分红到账 = 本笔收入</td><td>金额取正数。</td></tr>
+    <tr><td>当前市值</td><td>持仓股数 × 当前最新单价 = 当前市值</td><td>只展示在顶部公式和汇总卡，不进入流水列表。</td></tr>
+    <tr><td>这支总赚赔</td><td>当前市值 + 真实收入合计 + 真实支出合计</td><td>结果为正表示赚，结果为负表示赔。</td></tr>
+  </tbody>
+</table>
+<p>前端交易行展示分为三块：左侧为交易时间和类型，中间上方为公式模板、下方为代入后的真实金额，右侧为本笔金额大数字。流水按 trade_time 倒序，时间精确到时分秒。</p>
+
+<h1>六、接口设计</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">方法</th>
+      <th background-color="light-gray">路径</th>
+      <th background-color="light-gray">返回核心字段</th>
+      <th background-color="light-gray">说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GET</td><td>/api/v1/portfolio/overview</td><td>cash_balance、market_value、total_assets、today_profit、positions</td><td>总览账户资产。</td></tr>
+    <tr><td>GET</td><td>/api/v1/portfolio/stocks/{symbol}/cashflows</td><td>quantity、market_value、flow_profit、flows</td><td>单支股票资金流水。</td></tr>
+    <tr><td>GET</td><td>/api/v1/stocks</td><td>symbol、name、industry、close、change_pct</td><td>股票列表、搜索、行业筛选。</td></tr>
+    <tr><td>GET</td><td>/api/v1/monitor/dashboard</td><td>scheduler、recommendations、latest_snapshot、latest_weekly_review</td><td>操作看板。</td></tr>
+    <tr><td>POST</td><td>/api/v1/monitor/collect</td><td>snapshot_time、watched_stocks</td><td>手动触发采集。</td></tr>
+    <tr><td>POST</td><td>/api/v1/monitor/weekly-review</td><td>review_time、summary、next_week_plan</td><td>手动生成周复盘。</td></tr>
+    <tr><td>GET</td><td>/api/v1/reports/latest</td><td>title、summary、content、model_provider</td><td>最新 AI 日报。</td></tr>
+    <tr><td>GET</td><td>/api/v1/reports/{id}</td><td>report_date、summary、content</td><td>历史日报详情。</td></tr>
+  </tbody>
+</table>
+
+<h1>七、定时任务设计</h1>
+<p>定时任务由 APScheduler 在 FastAPI 进程启动时注册。是否启用由环境变量控制，防止本地开发时重复采集。</p>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">任务</th>
+      <th background-color="light-gray">触发规则</th>
+      <th background-color="light-gray">执行内容</th>
+      <th background-color="light-gray">页面展示</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>watchlist_collect_15m</td><td>工作日开市期间每 15 分钟。</td><td>采集关注股票、推荐池和市场状态。</td><td>操作看板显示最近采集时间和下次采集时间。</td></tr>
+    <tr><td>weekly_market_review</td><td>每周休市后。</td><td>生成市场周复盘、关注股票总结和下周计划。</td><td>操作看板显示最新周复盘。</td></tr>
+    <tr><td>manual_collect</td><td>用户点击手动刷新。</td><td>立即采集一次关注队列。</td><td>按钮触发，成功后刷新卡片。</td></tr>
+    <tr><td>manual_weekly_review</td><td>用户点击生成复盘。</td><td>立即生成一份周复盘。</td><td>按钮触发，成功后刷新复盘卡片。</td></tr>
+  </tbody>
+</table>
+
+<h1>八、前端页面设计要点</h1>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">页面</th>
+      <th background-color="light-gray">关键组件</th>
+      <th background-color="light-gray">设计要求</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>DashboardView</td><td>账户 Hero、资产卡、持仓卡片、日报摘要。</td><td>第一屏必须直观看到今日赚亏和总资产。</td></tr>
+    <tr><td>PortfolioCashflowView</td><td>顶部公式、汇总卡、流水时间线。</td><td>列表只展示真实流水，金额行尾大数字。</td></tr>
+    <tr><td>StockView</td><td>我的关注 Tab、股票列表 Tab、筛选区、详情面板。</td><td>表头固定，滚动加载，支持加入关注队列。</td></tr>
+    <tr><td>BacktestView / 操作看板</td><td>推荐卡、关注股票卡、任务状态、周复盘。</td><td>少讲回测术语，多讲今天要不要买卖和风险。</td></tr>
+    <tr><td>ReportView</td><td>历史日报列表、日报正文卡片。</td><td>每日和每周总结都要可追溯。</td></tr>
+  </tbody>
+</table>
+
+<h1>九、验证与质量要求</h1>
+<p>当前必须验证三类内容：第一，前端 TypeScript 和 Vite 构建通过；第二，后端 Python 编译通过；第三，资金流水接口返回的 flows 只包含真实交易，不包含“现在价值”伪流水。金额公式必须能和汇总卡对上。</p>
+<p>后续需要补充单元测试覆盖资金流水计算、关注股票筛选、监控动作分类和 AI 失败降级。等本地 JSON 迁移数据库后，再增加迁移脚本和接口集成测试。</p>

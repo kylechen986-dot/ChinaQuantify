@@ -1,315 +1,144 @@
 <title>ChinaQuantify 技术架构设计文档</title>
 
-<p><b>文档版本：</b>v0.1</p>
-<p><b>创建日期：</b>2026-07-04</p>
-<p><b>技术基线：</b>对齐本机已安装环境，优先降低启动成本。</p>
+<p><b>文档版本：</b>v0.2</p>
+<p><b>更新日期：</b>2026-07-04</p>
+<p><b>技术基线：</b>对齐本机已安装环境，优先使用稳定、易启动、易维护的版本。</p>
 
 <h1>一、架构目标</h1>
-<p>ChinaQuantify 采用前后端分离架构。前端负责管理台界面、图表展示和配置交互；后端负责行情数据、指标计算、回测、AI 日报生成和任务调度；数据库负责保存行情、指标、信号、回测和日报。第一阶段以本地开发和单机部署为主，后续可平滑迁移到云服务器。</p>
-<p>架构设计优先保证模块边界清晰、数据可追踪、任务可重跑、策略可扩展。MVP 阶段不引入过重的微服务或消息队列，避免在产品验证前增加复杂度。</p>
+<p>ChinaQuantify 采用前后端分离架构。前端负责小白化看板、消息卡片、持仓和流水展示；后端负责真实行情接入、关注队列、账户持仓、资金流水、监控采集、AI 日报和每周复盘。MVP 阶段以本机单机运行和 GitHub 托管代码为主，先保证用户能打开、能看懂、钱能对上。</p>
+<p>架构设计优先遵循四个原则：第一，真实数据优先，模拟内容必须明确标识；第二，确定性计算优先，盈亏和流水不能交给 AI 猜；第三，AI 只做解释、总结和建议表达；第四，所有自动任务可观察、可手动触发、可失败降级。</p>
 
-<h1>二、本机版本基线</h1>
+<h1>二、本机版本与技术栈</h1>
 <table>
   <thead>
     <tr>
       <th background-color="light-gray">类别</th>
-      <th background-color="light-gray">版本 / 方案</th>
+      <th background-color="light-gray">当前方案</th>
       <th background-color="light-gray">说明</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>Node.js</td>
-      <td>23.11.1</td>
-      <td>对齐本机已安装版本。</td>
-    </tr>
-    <tr>
-      <td>npm</td>
-      <td>10.9.2</td>
-      <td>作为默认包管理器；pnpm 可后续按需启用。</td>
-    </tr>
-    <tr>
-      <td>前端框架</td>
-      <td>Vue 3 + Vite + TypeScript</td>
-      <td>用户熟悉 Vue3 技术栈。</td>
-    </tr>
-    <tr>
-      <td>UI 和图表</td>
-      <td>Element Plus + ECharts</td>
-      <td>适合国内管理台和金融图表场景。</td>
-    </tr>
-    <tr>
-      <td>Python</td>
-      <td>3.14.4</td>
-      <td>对齐本机已安装版本；避开早期兼容风险较高的依赖。</td>
-    </tr>
-    <tr>
-      <td>后端框架</td>
-      <td>FastAPI + Uvicorn</td>
-      <td>轻量、类型友好、自动生成 OpenAPI。</td>
-    </tr>
-    <tr>
-      <td>数据处理</td>
-      <td>Pandas + NumPy</td>
-      <td>指标和回测先用自研轻量实现。</td>
-    </tr>
-    <tr>
-      <td>数据源</td>
-      <td>AkShare</td>
-      <td>优先支持国内 ETF 日线行情。</td>
-    </tr>
-    <tr>
-      <td>数据库</td>
-      <td>PostgreSQL via Docker Compose</td>
-      <td>Docker Desktop 启动后使用；开发早期可用 SQLite 兜底。</td>
-    </tr>
-    <tr>
-      <td>缓存</td>
-      <td>Redis via Docker Compose</td>
-      <td>MVP 可暂不强依赖，后续用于任务状态和缓存。</td>
-    </tr>
+    <tr><td>前端语言</td><td>TypeScript</td><td>对 Vue 页面、接口 DTO 和计算展示做类型约束。</td></tr>
+    <tr><td>前端框架</td><td>Vue 3 + Vite</td><td>用户熟悉 Vue3，Vite 本机启动快。</td></tr>
+    <tr><td>UI 与图表</td><td>Element Plus + ECharts</td><td>适合管理台、表格、卡片、技术图表和看板。</td></tr>
+    <tr><td>HTTP 客户端</td><td>Axios</td><td>统一封装 API 响应。</td></tr>
+    <tr><td>后端语言</td><td>Python</td><td>适合行情、指标、回测和 AI 服务编排。</td></tr>
+    <tr><td>后端框架</td><td>FastAPI + Uvicorn</td><td>轻量、启动快、OpenAPI 友好。</td></tr>
+    <tr><td>定时任务</td><td>APScheduler</td><td>工作日开市每 15 分钟采集，休市生成周复盘。</td></tr>
+    <tr><td>当前存储</td><td>本地 JSON 文件</td><td>MVP 快速落地；后续迁移 PostgreSQL。</td></tr>
+    <tr><td>行情数据</td><td>新浪财经实时接口等国内可访问数据源</td><td>关注股票和股票列表使用真实行情，记录同步时间精确到秒。</td></tr>
+    <tr><td>AI 模型</td><td>DeepSeek / 豆包优先，OpenAI 兜底</td><td>OpenAI 当前未充值，优先使用国内模型；全部通过环境变量配置。</td></tr>
   </tbody>
 </table>
 
-<h1>三、总体架构</h1>
-<pre lang="text" caption="系统逻辑架构"><code>Vue3 Admin
-  |
-  | HTTP JSON
-  v
-FastAPI Backend
-  |-- Market Service
-  |-- Indicator Service
-  |-- Strategy Service
-  |-- Backtest Service
-  |-- Report Service
-  |-- AI Service
-  |-- Scheduler Jobs
-  |
-  | SQL
-  v
-PostgreSQL
+<h1>三、系统总体架构</h1>
+<pre lang="text" caption="总体架构"><code>Vue3 Web App
+  -> Axios API Client
+  -> FastAPI Backend
+      -> Market Service
+      -> Watchlist Service
+      -> Portfolio Service
+      -> Monitor Service
+      -> Report Service
+      -> LLM Service
+      -> APScheduler Jobs
+  -> Local JSON Data
+      -> portfolio.json
+      -> monitoring snapshots
 
-External:
-  AkShare / Tushare
-  OpenAI / Gemini
-  Email / Enterprise WeChat</code></pre>
+External Services
+  -> Sina Realtime Market API
+  -> DeepSeek Chat API
+  -> Doubao Ark API
+  -> OpenAI API fallback</code></pre>
+<p>MVP 阶段所有业务运行在一个后端进程内。这样可以降低部署复杂度，也方便快速验证产品体验。等关注股票、账户流水、日报复盘稳定后，再把本地 JSON 数据迁移到 PostgreSQL，把定时任务和 API 服务拆分。</p>
 
 <h1>四、前端架构</h1>
-<p>前端使用 Vue 3、Vite 和 TypeScript。UI 组件库选择 Element Plus，图表库选择 ECharts。状态管理使用 Pinia，路由使用 Vue Router，HTTP 请求使用 Axios。页面布局采用左侧导航和顶部状态栏的管理台结构。</p>
+<p>前端是小白用户的主要入口，设计上避免专业交易软件的密集表格堆砌。页面以消息卡片、汇总卡片、资金卡片和少量图表为主。需要看详细数据时再展开或进入详情页。</p>
 <table>
   <thead>
     <tr>
-      <th background-color="light-gray">层级</th>
+      <th background-color="light-gray">目录 / 模块</th>
       <th background-color="light-gray">职责</th>
-      <th background-color="light-gray">建议目录</th>
+      <th background-color="light-gray">当前重点页面</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>views</td>
-      <td>页面级组件，承载路由。</td>
-      <td>src/views</td>
-    </tr>
-    <tr>
-      <td>components</td>
-      <td>可复用业务组件和通用 UI。</td>
-      <td>src/components</td>
-    </tr>
-    <tr>
-      <td>api</td>
-      <td>封装后端接口请求。</td>
-      <td>src/api</td>
-    </tr>
-    <tr>
-      <td>stores</td>
-      <td>Pinia 状态管理。</td>
-      <td>src/stores</td>
-    </tr>
-    <tr>
-      <td>router</td>
-      <td>路由配置和导航守卫。</td>
-      <td>src/router</td>
-    </tr>
-    <tr>
-      <td>charts</td>
-      <td>ECharts option 工厂和图表工具。</td>
-      <td>src/charts</td>
-    </tr>
-    <tr>
-      <td>types</td>
-      <td>前端接口类型。</td>
-      <td>src/types</td>
-    </tr>
+    <tr><td>src/layouts</td><td>应用框架、左侧菜单、顶部状态。</td><td>AppLayout</td></tr>
+    <tr><td>src/router</td><td>路由定义和页面标题。</td><td>总览、关注股票、操作看板、AI 日报、资金流水详情。</td></tr>
+    <tr><td>src/api</td><td>封装 REST API。</td><td>portfolio、monitor、reports、stocks。</td></tr>
+    <tr><td>src/types</td><td>前后端数据结构约束。</td><td>PortfolioOverview、PortfolioCashflowDetail、MonitorDashboard。</td></tr>
+    <tr><td>src/views</td><td>页面级组件。</td><td>DashboardView、StockView、BacktestView、ReportView、PortfolioCashflowView。</td></tr>
+    <tr><td>src/styles</td><td>全局布局、卡片、资金流水和看板样式。</td><td>app.css</td></tr>
   </tbody>
 </table>
+<p>前端展示规则由后端返回的数据驱动。金额、收益、流水公式等必须来自后端或确定性前端格式化，AI 不参与金额计算。</p>
 
 <h1>五、后端架构</h1>
-<p>后端使用 FastAPI，采用分层结构：API 层负责请求和响应，Service 层负责业务编排，Repository 层负责数据访问，Domain 层承载指标、策略、回测等纯逻辑。任务调度由 APScheduler 承担，第一阶段运行在同一个后端进程中。</p>
 <table>
   <thead>
     <tr>
       <th background-color="light-gray">模块</th>
       <th background-color="light-gray">职责</th>
+      <th background-color="light-gray">关键文件</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>api</td>
-      <td>REST 接口、参数校验、错误返回。</td>
-    </tr>
-    <tr>
-      <td>core</td>
-      <td>配置、日志、异常、依赖注入。</td>
-    </tr>
-    <tr>
-      <td>models</td>
-      <td>SQLAlchemy ORM 模型。</td>
-    </tr>
-    <tr>
-      <td>schemas</td>
-      <td>Pydantic 请求和响应模型。</td>
-    </tr>
-    <tr>
-      <td>repositories</td>
-      <td>数据库读写封装。</td>
-    </tr>
-    <tr>
-      <td>services</td>
-      <td>行情、指标、策略、回测、日报、AI 等业务服务。</td>
-    </tr>
-    <tr>
-      <td>jobs</td>
-      <td>定时任务和手动触发任务。</td>
-    </tr>
-    <tr>
-      <td>domain</td>
-      <td>指标算法、策略规则、回测引擎等纯业务逻辑。</td>
-    </tr>
+    <tr><td>API 路由</td><td>统一返回 ApiResponse，暴露前端所需接口。</td><td>app/api/routes/*.py</td></tr>
+    <tr><td>配置</td><td>读取 AI Key、模型、调度开关、基础 URL。</td><td>app/core/config.py</td></tr>
+    <tr><td>行情服务</td><td>拉取 ETF 和股票真实行情，补充同步时间。</td><td>market_service.py、watchlist_service.py</td></tr>
+    <tr><td>账户服务</td><td>读取持仓、按批次计算盈亏、生成资金流水。</td><td>portfolio_service.py</td></tr>
+    <tr><td>监控服务</td><td>关注股票 15 分钟采集、推荐池、每周复盘。</td><td>monitor_service.py</td></tr>
+    <tr><td>日报服务</td><td>生成 AI 日报、历史日报列表、日报详情。</td><td>report_service.py</td></tr>
+    <tr><td>模型服务</td><td>DeepSeek、豆包、OpenAI 调用和失败降级。</td><td>llm_service.py</td></tr>
   </tbody>
 </table>
 
-<h1>六、数据架构</h1>
-<p>数据库优先使用 PostgreSQL，核心数据包括标的池、行情 K 线、指标快照、策略定义、信号记录、回测任务、回测结果、AI 日报和任务日志。所有由任务生成的数据都需要记录来源、时间范围、运行批次和更新时间，便于排查和复盘。</p>
-<pre lang="text" caption="核心数据流"><code>market_symbols
-  -> market_daily_bars
-  -> indicator_snapshots
-  -> strategy_signals
-  -> backtest_runs / backtest_results
-  -> ai_reports</code></pre>
-
-<h1>七、任务架构</h1>
-<p>MVP 阶段采用 APScheduler，提供定时任务和手动触发接口。任务执行必须记录状态、开始时间、结束时间、错误信息和关键参数。任务失败不应影响 API 服务启动。</p>
+<h1>六、数据与任务架构</h1>
+<p>MVP 当前使用本地 JSON 文件保存账户样例、关注队列和监控快照。这样能快速启动，并且便于用户先验证交互。后续当用户需要录入真实持仓、长期保存历史和多设备访问时，再迁移到 PostgreSQL。</p>
 <table>
   <thead>
     <tr>
-      <th background-color="light-gray">任务</th>
-      <th background-color="light-gray">触发方式</th>
-      <th background-color="light-gray">输出</th>
+      <th background-color="light-gray">数据域</th>
+      <th background-color="light-gray">当前存储</th>
+      <th background-color="light-gray">后续数据库表</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>行情同步</td>
-      <td>每日收盘后 / 手动触发</td>
-      <td>market_daily_bars</td>
-    </tr>
-    <tr>
-      <td>指标计算</td>
-      <td>行情同步后 / 手动触发</td>
-      <td>indicator_snapshots</td>
-    </tr>
-    <tr>
-      <td>策略信号</td>
-      <td>指标计算后 / 手动触发</td>
-      <td>strategy_signals</td>
-    </tr>
-    <tr>
-      <td>回测运行</td>
-      <td>手动触发 / 日报前触发</td>
-      <td>backtest_runs、backtest_results</td>
-    </tr>
-    <tr>
-      <td>AI 日报</td>
-      <td>每日收盘后 / 手动触发</td>
-      <td>ai_reports</td>
-    </tr>
+    <tr><td>账户资产</td><td>backend/local_data/portfolio.json</td><td>accounts、positions、position_lots、cashflows</td></tr>
+    <tr><td>股票与 ETF 行情</td><td>服务实时拉取和内存计算</td><td>securities、market_quotes、market_daily_bars</td></tr>
+    <tr><td>关注队列</td><td>服务内置与本地文件快照</td><td>watchlist_items</td></tr>
+    <tr><td>监控快照</td><td>backend/local_data/monitoring</td><td>monitor_snapshots、monitor_snapshot_items</td></tr>
+    <tr><td>AI 日报</td><td>接口实时生成与历史模拟</td><td>ai_reports、ai_report_items</td></tr>
   </tbody>
 </table>
+<p>定时任务由 APScheduler 驱动。工作日开市期间每 15 分钟执行关注股票采集；每周休市生成复盘。所有任务都要记录最近采集时间、下次任务时间、任务开关和失败原因，前端操作看板直接展示这些状态。</p>
 
-<h1>八、AI 架构</h1>
-<p>AI 服务通过 Provider 抽象接入不同模型。第一版可优先接入 OpenAI，后续扩展 Gemini。AI 输入必须来自系统生成的结构化摘要，包括 ETF 表现、指标状态、策略信号和回测指标，不允许把密钥、完整日志或无关个人信息传给外部模型。</p>
-<p>AI 输出需要保存原始内容、模型名称、提示词版本、输入摘要和生成时间。日报详情页应展示“该内容由 AI 基于系统数据生成，仅用于研究辅助”的提示。</p>
-
-<h1>九、API 架构</h1>
-<p>后端提供 REST API，接口按业务域分组。所有接口返回统一 envelope，便于前端处理错误和加载状态。</p>
-<pre lang="json" caption="统一响应结构"><code>{
-  "success": true,
-  "data": {},
-  "message": "",
-  "request_id": "uuid"
-}</code></pre>
+<h1>七、核心接口</h1>
 <table>
   <thead>
     <tr>
-      <th background-color="light-gray">资源</th>
-      <th background-color="light-gray">路径前缀</th>
-      <th background-color="light-gray">说明</th>
+      <th background-color="light-gray">接口</th>
+      <th background-color="light-gray">用途</th>
+      <th background-color="light-gray">页面</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td>系统</td>
-      <td>/api/v1/system</td>
-      <td>健康检查、版本、运行状态。</td>
-    </tr>
-    <tr>
-      <td>行情</td>
-      <td>/api/v1/market</td>
-      <td>标的池、K 线、行情概览。</td>
-    </tr>
-    <tr>
-      <td>指标</td>
-      <td>/api/v1/indicators</td>
-      <td>指标快照、趋势状态。</td>
-    </tr>
-    <tr>
-      <td>策略</td>
-      <td>/api/v1/strategies</td>
-      <td>策略配置、信号查询。</td>
-    </tr>
-    <tr>
-      <td>回测</td>
-      <td>/api/v1/backtests</td>
-      <td>回测运行、结果查询。</td>
-    </tr>
-    <tr>
-      <td>日报</td>
-      <td>/api/v1/reports</td>
-      <td>AI 日报生成和查询。</td>
-    </tr>
-    <tr>
-      <td>任务</td>
-      <td>/api/v1/jobs</td>
-      <td>任务触发、状态和日志。</td>
-    </tr>
+    <tr><td>GET /api/v1/portfolio/overview</td><td>账户总览、现金、总资产、持仓盈亏。</td><td>总览</td></tr>
+    <tr><td>GET /api/v1/portfolio/stocks/{symbol}/cashflows</td><td>单支股票资金流水详情。</td><td>资金流水详情</td></tr>
+    <tr><td>GET /api/v1/stocks</td><td>股票列表、搜索、行业筛选、滚动加载。</td><td>关注股票</td></tr>
+    <tr><td>GET /api/v1/monitor/dashboard</td><td>操作看板、关注队列、推荐股票、任务状态。</td><td>操作看板</td></tr>
+    <tr><td>POST /api/v1/monitor/collect</td><td>手动触发关注股票采集。</td><td>操作看板</td></tr>
+    <tr><td>POST /api/v1/monitor/weekly-review</td><td>手动生成每周复盘。</td><td>操作看板</td></tr>
+    <tr><td>GET /api/v1/reports/latest</td><td>最新 AI 日报。</td><td>总览、AI 日报</td></tr>
+    <tr><td>GET /api/v1/reports</td><td>历史日报列表。</td><td>AI 日报</td></tr>
   </tbody>
 </table>
 
-<h1>十、部署架构</h1>
-<p>本地开发阶段，前端 Vite Dev Server、后端 Uvicorn 和 Docker Compose 中的 PostgreSQL / Redis 分别运行。部署阶段可以使用 Docker Compose 统一启动前端静态资源服务、后端 API、PostgreSQL 和 Redis。</p>
-<pre lang="text" caption="本地开发进程"><code>frontend: npm run dev
-backend:  python -m uvicorn app.main:app --reload
-db:       docker compose up postgres redis</code></pre>
+<h1>八、AI 模型与安全边界</h1>
+<p>模型调用顺序优先使用国内模型，默认按 DeepSeek、豆包、OpenAI 兜底。OpenAI 账户当前没有充值，不能作为主要路径。所有 Key 必须保存在本地环境变量或未提交的配置文件中，禁止写入 Git 仓库和飞书文档。</p>
+<p>AI 的职责是解释市场、整理日报、生成小白化建议表达。以下内容必须由确定性代码计算：账户余额、持仓股数、买入成本、当前市值、今日盈亏、累计盈亏、每笔资金流水金额。</p>
 
-<h1>十一、安全设计</h1>
-<p>API Key、数据库密码、模型密钥等敏感信息通过环境变量或本地未入库配置文件管理。后端日志不输出完整密钥，不把模型请求中的敏感字段写入日志。前端只展示配置是否存在和部分脱敏值。</p>
-<p>MVP 默认本地使用，不设计复杂用户体系。后续如部署到公网，需要增加登录认证、接口鉴权、CSRF / CORS 收敛、访问日志和操作审计。</p>
-
-<h1>十二、演进路线</h1>
-<ol>
-  <li seq="auto">MVP：单机 FastAPI + APScheduler + PostgreSQL，完成 ETF 日报闭环。</li>
-  <li seq="auto">增强：加入 Redis 缓存、任务队列、更多数据源和通知渠道。</li>
-  <li seq="auto">研究平台：支持多策略、多标的组合、策略版本管理和对比分析。</li>
-  <li seq="auto">模拟盘：接入模拟交易接口，但仍保留人工确认。</li>
-  <li seq="auto">小资金实盘辅助：仅在长期验证后考虑，并加入严格风控和人工审批。</li>
-</ol>
+<h1>九、部署与演进</h1>
+<p>MVP 本机启动方式为前端 Vite 开发服务加后端 Uvicorn 服务。代码托管到 GitHub 仓库 kylechen986-dot/ChinaQuantify。当前阶段优先保证本机可启动、页面可用、接口真实、数据可解释。</p>
+<p>后续演进顺序建议为：先补真实持仓录入和流水新增，再把本地 JSON 迁移到 PostgreSQL，然后增加用户风险偏好和模拟组合，最后再考虑通知、云部署和券商交易接口。</p>
