@@ -4,6 +4,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+backend/local_data/
 node_modules/
 dist/
 .DS_Store

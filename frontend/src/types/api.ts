@@ -72,3 +72,30 @@ export interface AiReport {
   llm_usage?: Record<string, unknown>
   llm_error?: string
 }
+
+export interface WatchStock {
+  symbol: string
+  name: string
+  market: string
+  industry: string
+  style: string
+  watch_reason: string
+  trade_date: string
+  synced_at: string
+  sync_timezone: string
+  close: number
+  change_pct: number
+  ma20: number
+  ma60: number
+  rsi14: number
+  relative_strength: string
+  signal_type: string
+  signal_score: number
+  related_etf: string
+  watched: boolean
+  market_tone: string
+  market_context: string
+  plain_analysis: string
+  test_plan: string[]
+  risk_points: string[]
+}

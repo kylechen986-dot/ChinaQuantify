@@ -18,6 +18,10 @@
           <el-icon><TrendCharts /></el-icon>
           <span>国内 ETF 行情</span>
         </el-menu-item>
+        <el-menu-item index="/stocks">
+          <el-icon><Star /></el-icon>
+          <span>关注股票</span>
+        </el-menu-item>
         <el-menu-item index="/strategy">
           <el-icon><Operation /></el-icon>
           <span>策略与信号</span>

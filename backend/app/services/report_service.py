@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.services.llm_service import generate_deepseek_report, generate_doubao_report, generate_openai_report
 from app.services.market_service import get_market_overview
 from app.services.strategy_service import get_strategy_signals
+from app.services.watchlist_service import list_watch_stocks
 
 REPORT_CONTENT = """今日国内 ETF 市场整体偏震荡，沪深300ETF 和科创50ETF 相对强于创业板ETF。
 
@@ -80,9 +81,12 @@ def build_report_prompt() -> str:
         回测摘要：
         {get_backtest_summary()}
 
+        关注个股：
+        {list_watch_stocks()}
+
         输出要求：
         1. 使用中文。
-        2. 包含市场概览、策略信号解读、风险提示三段。
+        2. 包含市场概览、策略信号解读、关注个股研判、风险提示四段。
         3. 不要给出买卖指令，只给研究复盘视角。
         """
     ).strip()

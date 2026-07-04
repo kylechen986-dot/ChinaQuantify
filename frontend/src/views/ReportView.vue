@@ -90,6 +90,31 @@
         </section>
 
         <section class="daily-card">
+          <div class="card-kicker">关注个股</div>
+          <h3>结合整体市场，看这两只测试股票</h3>
+          <div class="stock-card-grid">
+            <article v-for="stock in watchStocks" :key="stock.symbol" class="stock-card">
+              <div class="stock-card-head">
+                <div>
+                  <strong>{{ stock.name }}</strong>
+                  <span>{{ stock.symbol }} · {{ stock.industry }} · {{ stock.style }}</span>
+                </div>
+                <el-tag :type="stock.change_pct >= 0 ? 'danger' : 'success'" effect="plain">
+                  {{ stock.change_pct }}%
+                </el-tag>
+              </div>
+              <div class="stock-data-row">
+                <span>收盘 {{ stock.close }}</span>
+                <span>RSI {{ stock.rsi14 }}</span>
+                <span>{{ stock.signal_type }} · {{ stock.signal_score }}</span>
+              </div>
+              <p>{{ stock.plain_analysis }}</p>
+              <small>{{ stock.market_context }}</small>
+            </article>
+          </div>
+        </section>
+
+        <section class="daily-card">
           <div class="card-kicker">完整日报</div>
           <h3>AI 生成正文</h3>
           <div class="report-meta">
@@ -117,12 +142,13 @@ import { Refresh } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../api/modules'
-import type { AiReport, MarketOverview, StrategySignal } from '../types/api'
+import type { AiReport, MarketOverview, StrategySignal, WatchStock } from '../types/api'
 
 const reports = ref<AiReport[]>([])
 const report = ref<AiReport>()
 const overview = ref<MarketOverview>()
 const signals = ref<StrategySignal[]>([])
+const watchStocks = ref<WatchStock[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -168,14 +194,16 @@ async function loadLatest() {
 }
 
 onMounted(async () => {
-  const [reportList, marketData, signalData] = await Promise.all([
+  const [reportList, marketData, signalData, stockData] = await Promise.all([
     api.reports(),
     api.marketOverview(),
     api.signals(),
+    api.watchStocks(),
   ])
   reports.value = reportList
   overview.value = marketData
   signals.value = signalData
+  watchStocks.value = stockData
   if (reportList[0]) {
     await loadReport(reportList[0].id)
   }
