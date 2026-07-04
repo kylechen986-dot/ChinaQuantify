@@ -277,3 +277,34 @@ export interface PortfolioOverview {
   position_count: number
   positions: PortfolioPosition[]
 }
+
+export interface PortfolioCashflow {
+  id: string
+  date: string
+  type: string
+  type_text: string
+  quantity: number
+  price: number
+  amount: number
+  direction: 'in' | 'out'
+  note: string
+  related_lot_id: string
+}
+
+export interface PortfolioCashflowDetail {
+  symbol: string
+  name: string
+  synced_at: string
+  sync_timezone: string
+  current_price: number
+  quantity: number
+  market_value: number
+  cost_value: number
+  holding_profit: number
+  holding_profit_pct: number
+  today_profit: number
+  total_inflow: number
+  total_outflow: number
+  net_cashflow: number
+  flows: PortfolioCashflow[]
+}

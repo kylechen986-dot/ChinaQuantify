@@ -104,6 +104,9 @@
             <span>现在怎么处理</span>
             <strong>{{ position.action_hint }}</strong>
           </div>
+          <router-link class="holding-flow-link" :to="`/portfolio/${position.symbol}/cashflows`">
+            查看资金流水
+          </router-link>
           <div class="holding-data-row">
             <span>总份额 {{ position.quantity }} 股</span>
             <span>持仓均价 {{ formatMoney(position.avg_cost_price) }}</span>
