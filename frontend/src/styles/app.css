@@ -947,3 +947,133 @@ body {
   line-height: 1.9;
   white-space: pre-line;
 }
+
+.backtest-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.backtest-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #b9d7ff;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+}
+
+.backtest-hero h2 {
+  margin: 8px 0 10px;
+  color: #101828;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+.backtest-hero p {
+  max-width: 920px;
+  margin: 0;
+  color: #475467;
+  line-height: 1.8;
+}
+
+.backtest-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.backtest-panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.backtest-chart-panel {
+  grid-row: span 2;
+}
+
+.backtest-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.backtest-panel-head h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 17px;
+}
+
+.backtest-panel-head p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.backtest-explain-list,
+.backtest-score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backtest-explain-list article,
+.backtest-score-item {
+  padding: 14px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.backtest-explain-list strong {
+  color: #101828;
+}
+
+.backtest-explain-list p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.7;
+}
+
+.backtest-score-item {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.backtest-score-item div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backtest-score-item span,
+.backtest-score-item small {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.backtest-score-item strong {
+  color: #101828;
+  font-size: 17px;
+}
+
+.backtest-next-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.backtest-next-list li {
+  color: #475467;
+  line-height: 1.9;
+}
