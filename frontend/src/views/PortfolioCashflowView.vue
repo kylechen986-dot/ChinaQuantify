@@ -8,6 +8,9 @@
           这里不看复杂术语，只看钱有没有对上：买入花出去是负数，卖出和分红收回来是正数，
           当前还拿着的股票市值也是正数，全部加起来就是这支股票现在赚还是赔。
         </p>
+        <div class="cashflow-value-rule">
+          现在价值 = 持仓 {{ detail?.quantity ?? '-' }} 股 / 当前最新单价 {{ formatMoney(detail?.current_price) }}
+        </div>
       </div>
       <el-button @click="router.back()">返回</el-button>
     </section>

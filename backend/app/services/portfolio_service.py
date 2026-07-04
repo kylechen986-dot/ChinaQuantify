@@ -139,7 +139,7 @@ def _flow_type_text(value: str) -> str:
         "FEE": "手续费",
         "TAX": "税费",
         "ADJUST": "资金调整",
-        "MARKET_VALUE": "现在还值",
+        "MARKET_VALUE": "现在价值",
     }
     return mapping.get(value, value)
 
@@ -362,7 +362,7 @@ def get_stock_cashflows(symbol: str) -> dict | None:
             "id": f"market-value-{normalized}",
             "date": get_sync_time(),
             "type": "MARKET_VALUE",
-            "type_text": "现在还值",
+            "type_text": "现在价值",
             "quantity": position["quantity"],
             "price": position["current_price"],
             "fee": 0,

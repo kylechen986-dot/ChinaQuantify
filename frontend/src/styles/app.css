@@ -1290,6 +1290,12 @@ body {
   line-height: 1.8;
 }
 
+.cashflow-value-rule {
+  margin-top: 8px;
+  color: #d92d20;
+  line-height: 1.7;
+}
+
 .cashflow-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
