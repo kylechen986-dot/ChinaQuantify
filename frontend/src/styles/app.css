@@ -177,6 +177,10 @@ body {
   white-space: pre-line;
 }
 
+.report-warning {
+  margin-top: 20px;
+}
+
 .settings-form {
   max-width: 720px;
 }
