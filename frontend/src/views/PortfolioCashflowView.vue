@@ -5,8 +5,8 @@
         <div class="eyebrow">资金流水详情</div>
         <h2>{{ detail?.name ?? '读取中' }} {{ detail?.symbol ?? '' }}</h2>
         <p>
-          按时间顺序记录这支股票的钱：买入是负数，卖出和分红是正数，手续费和税费是负数。
-          当前市值和浮盈浮亏单独展示，不混进已发生流水。
+          这里不看复杂术语，只看钱有没有对上：买入花出去是负数，卖出和分红收回来是正数，
+          当前还拿着的股票市值也是正数，全部加起来就是这支股票现在赚还是赔。
         </p>
       </div>
       <el-button @click="router.back()">返回</el-button>
@@ -24,21 +24,21 @@
         <small>成本 {{ formatMoney(detail?.cost_value) }}</small>
       </article>
       <article>
-        <span>账面盈亏</span>
+        <span>这支总赚赔</span>
         <strong :class="profitClass(detail?.holding_profit)">{{ signedMoney(detail?.holding_profit) }}</strong>
         <small>{{ signedPercent(detail?.holding_profit_pct) }}</small>
       </article>
       <article>
-        <span>净现金流</span>
-        <strong :class="profitClass(detail?.net_cashflow)">{{ signedMoney(detail?.net_cashflow) }}</strong>
-        <small>流入 {{ formatMoney(detail?.total_inflow) }} / 流出 {{ formatMoney(detail?.total_outflow) }}</small>
+        <span>流水相加</span>
+        <strong :class="profitClass(detail?.flow_profit)">{{ signedMoney(detail?.flow_profit) }}</strong>
+        <small>收回 {{ formatMoney(detail?.total_inflow) }} / 花出 {{ formatMoney(detail?.total_outflow) }}</small>
       </article>
     </div>
 
     <section class="cashflow-panel">
       <div class="dashboard-panel-head">
         <div>
-          <h3>流水明细</h3>
+          <h3>钱是怎么算出来的</h3>
           <p>{{ detail?.synced_at ?? '-' }} · {{ detail?.sync_timezone ?? 'Asia/Shanghai' }}</p>
         </div>
         <el-tag effect="plain">{{ detail?.flows.length ?? 0 }} 条</el-tag>

@@ -306,5 +306,6 @@ export interface PortfolioCashflowDetail {
   total_inflow: number
   total_outflow: number
   net_cashflow: number
+  flow_profit: number
   flows: PortfolioCashflow[]
 }
