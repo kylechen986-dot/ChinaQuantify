@@ -1,7 +1,7 @@
 <title>ChinaQuantify 技术架构设计文档</title>
 
 <p><b>文档版本：</b>v0.2</p>
-<p><b>更新日期：</b>2026-07-04</p>
+<p><b>更新日期：</b>2026-07-06</p>
 <p><b>技术基线：</b>对齐本机已安装环境，优先使用稳定、易启动、易维护的版本。</p>
 
 <h1>一、架构目标</h1>
@@ -139,6 +139,93 @@ External Services
 <p>模型调用顺序优先使用国内模型，默认按 DeepSeek、豆包、OpenAI 兜底。OpenAI 账户当前没有充值，不能作为主要路径。所有 Key 必须保存在本地环境变量或未提交的配置文件中，禁止写入 Git 仓库和飞书文档。</p>
 <p>AI 的职责是解释市场、整理日报、生成小白化建议表达。以下内容必须由确定性代码计算：账户余额、持仓股数、买入成本、当前市值、今日盈亏、累计盈亏、每笔资金流水金额。</p>
 
-<h1>九、部署与演进</h1>
+<h1>九、系统工程介绍和启停部署手册</h1>
+<p>本节用于说明工程目录、运行依赖、启动、停止、重启、日志查看和部署检查。MVP 阶段以 Windows 本机开发运行为主，后续云服务器部署可以沿用同样的前后端分离思路。</p>
+
+<h2>（一）工程目录介绍</h2>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">目录 / 文件</th>
+      <th background-color="light-gray">说明</th>
+      <th background-color="light-gray">维护要求</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>frontend</td><td>Vue3 前端工程，负责总览、关注股票、操作看板、AI 日报和资金流水页面。</td><td>页面、样式、接口类型统一在该目录维护。</td></tr>
+    <tr><td>backend</td><td>FastAPI 后端工程，负责 API、行情、账户、监控、日报和 AI 模型调用。</td><td>业务逻辑优先放在 app/services，路由层保持轻薄。</td></tr>
+    <tr><td>backend/local_data</td><td>MVP 本地数据目录，保存账户样例、关注快照和复盘快照。</td><td>后续迁移数据库前不要随意改字段结构。</td></tr>
+    <tr><td>deploy</td><td>部署相关配置目录。</td><td>后续补充 Docker Compose、Nginx、生产环境脚本。</td></tr>
+    <tr><td>docs/feishu</td><td>飞书文档本地副本。</td><td>修改飞书云文档时同步更新本地副本。</td></tr>
+    <tr><td>backend-server.log</td><td>本机后端运行日志。</td><td>接口异常、启动失败时优先查看。</td></tr>
+    <tr><td>frontend-server.log</td><td>本机前端运行日志。</td><td>前端启动失败或端口占用时查看。</td></tr>
+  </tbody>
+</table>
+
+<h2>（二）运行环境准备</h2>
+<p>本机开发需要 Node.js、npm、Python 虚拟环境和 Git。AI Key、模型配置、调度开关等敏感配置只能写入本地环境变量或未提交的 .env 文件，禁止写入 Git 仓库、代码注释和飞书文档。</p>
+<pre lang="powershell" caption="后端依赖准备"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\backend
+.\.venv\Scripts\python -m pip install -r requirements.txt</code></pre>
+<pre lang="powershell" caption="前端依赖准备"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\frontend
+npm install</code></pre>
+
+<h2>（三）本机启动手册</h2>
+<p>推荐前后端分别启动。后端默认监听 127.0.0.1:8000，前端默认监听 127.0.0.1:5173。用户访问前端页面，前端再通过 Axios 调用后端 API。</p>
+<pre lang="powershell" caption="启动后端"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\backend
+.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000</code></pre>
+<pre lang="powershell" caption="启动前端"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\frontend
+npm run dev</code></pre>
+<p><b>访问地址。</b>前端地址为 http://127.0.0.1:5173，后端接口地址为 http://127.0.0.1:8000/api/v1。</p>
+
+<h2>（四）后台启动方式</h2>
+<p>如果希望关闭终端后仍能保持服务运行，可以使用 PowerShell 后台进程方式启动，并把日志写入项目根目录。</p>
+<pre lang="powershell" caption="后台启动后端"><code>Start-Process -FilePath powershell -ArgumentList '-NoProfile','-Command','Set-Location "D:\CodexWorkSpace\ChinaQuantify\backend"; .\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 *&gt; ..\backend-server.log' -WindowStyle Hidden</code></pre>
+<pre lang="powershell" caption="后台启动前端"><code>Start-Process -FilePath powershell -ArgumentList '-NoProfile','-Command','Set-Location "D:\CodexWorkSpace\ChinaQuantify\frontend"; npm run dev *&gt; ..\frontend-server.log' -WindowStyle Hidden</code></pre>
+
+<h2>（五）停止和重启手册</h2>
+<p>停止服务时优先按端口查找监听进程，只停止本项目使用的端口，避免误杀其他应用。重启时先停止对应端口，再重新启动服务。</p>
+<pre lang="powershell" caption="停止后端 8000 端口"><code>$listen = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($listen) { Stop-Process -Id $listen.OwningProcess -Force }</code></pre>
+<pre lang="powershell" caption="停止前端 5173 端口"><code>$listen = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($listen) { Stop-Process -Id $listen.OwningProcess -Force }</code></pre>
+<pre lang="powershell" caption="一键重启后端"><code>$listen = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($listen) { Stop-Process -Id $listen.OwningProcess -Force; Start-Sleep -Seconds 2 }
+Start-Process -FilePath powershell -ArgumentList '-NoProfile','-Command','Set-Location "D:\CodexWorkSpace\ChinaQuantify\backend"; .\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 *&gt; ..\backend-server.log' -WindowStyle Hidden</code></pre>
+
+<h2>（六）运行检查和日志查看</h2>
+<p>启动后需要检查前端页面、后端接口、资金流水接口和日志。MVP 阶段没有单独的 /health 接口，检查后端可直接请求业务接口。</p>
+<pre lang="powershell" caption="检查前端页面"><code>Invoke-WebRequest -Uri "http://127.0.0.1:5173/dashboard" -UseBasicParsing</code></pre>
+<pre lang="powershell" caption="检查后端资金流水接口"><code>Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/portfolio/stocks/600519/cashflows" -Method Get</code></pre>
+<pre lang="powershell" caption="查看日志"><code>Get-Content D:\CodexWorkSpace\ChinaQuantify\backend-server.log -Tail 100
+Get-Content D:\CodexWorkSpace\ChinaQuantify\frontend-server.log -Tail 100</code></pre>
+
+<h2>（七）构建和发布检查</h2>
+<p>提交代码前必须完成基础校验：后端编译、前端构建、敏感 Key 扫描。前端构建出现依赖包 PURE annotation 或 chunk size 警告时，不影响当前 MVP 运行，但需要在后续性能优化阶段处理。</p>
+<pre lang="powershell" caption="后端编译检查"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\backend
+.\.venv\Scripts\python -m compileall app</code></pre>
+<pre lang="powershell" caption="前端构建检查"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify\frontend
+npm run build</code></pre>
+<pre lang="powershell" caption="敏感 Key 扫描"><code>Set-Location D:\CodexWorkSpace\ChinaQuantify
+rg -n "sk-|apikey-|api_key|API_KEY" -S .</code></pre>
+
+<h2>（八）常见问题处理</h2>
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">现象</th>
+      <th background-color="light-gray">优先检查</th>
+      <th background-color="light-gray">处理方式</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>页面空白</td><td>前端控制台、Vite 是否启动、API 是否 500。</td><td>先刷新页面，再查看 frontend-server.log 和浏览器控制台。</td></tr>
+    <tr><td>接口访问失败</td><td>8000 端口是否监听、后端日志是否报错。</td><td>重启后端，查看 backend-server.log。</td></tr>
+    <tr><td>行情时间不更新</td><td>数据源是否可访问、定时任务是否启用。</td><td>手动触发采集接口，再查看监控快照。</td></tr>
+    <tr><td>AI 日报生成失败</td><td>模型 Key、余额、网络和模型服务返回。</td><td>优先使用 DeepSeek / 豆包，OpenAI 当前只作为兜底。</td></tr>
+    <tr><td>资金流水对不上</td><td>买入批次、费用、分红和当前价格。</td><td>先看资金流水详情页的公式代入，再检查 portfolio.json。</td></tr>
+  </tbody>
+</table>
+
+<h1>十、部署与演进</h1>
 <p>MVP 本机启动方式为前端 Vite 开发服务加后端 Uvicorn 服务。代码托管到 GitHub 仓库 kylechen986-dot/ChinaQuantify。当前阶段优先保证本机可启动、页面可用、接口真实、数据可解释。</p>
 <p>后续演进顺序建议为：先补真实持仓录入和流水新增，再把本地 JSON 迁移到 PostgreSQL，然后增加用户风险偏好和模拟组合，最后再考虑通知、云部署和券商交易接口。</p>
